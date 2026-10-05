@@ -1,16 +1,19 @@
-"""Local dashboard server: type any @handle or channel ID, get the dashboard.
+"""Dashboard server: type any @handle or channel ID, get the dashboard.
 
-    python src/serve.py            # then open http://127.0.0.1:8765
+    python src/serve.py            # locally: opens http://127.0.0.1:8765
 
-The API key stays in .env on this machine; the browser only talks to this
-server. Audits are cached, so repeating a channel costs no quota.
+Hosted (e.g. Render): set PORT (the host does), YOUTUBE_API_KEY and, to keep
+strangers from spending the quota, DASHBOARD_PASSWORD. The key never reaches
+the browser; it only talks to this server. Audits are cached on disk, so
+repeating a channel costs no quota while the cache lasts.
 """
 
 import json
+import os
 import sys
 import threading
 import webbrowser
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -21,7 +24,9 @@ from yt_channel_audit import (ApiError, QuotaExceeded, YouTubeClient,  # noqa: E
                               audit_channel, load_api_key, slugify)
 
 TEMPLATE = Path(__file__).resolve().parent / "dashboard_template.html"
-PORT = 8765
+HOSTED = "PORT" in os.environ          # a host like Render sets PORT
+PORT = int(os.environ.get("PORT", 8765))
+PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
 _lock = threading.Lock()  # one audit at a time
 
 
@@ -47,6 +52,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif url.path == "/healthz":
+            self._json(200, {"ok": True})
+        elif url.path.startswith("/api/") and PASSWORD and self.headers.get("X-Dashboard-Key") != PASSWORD:
+            self._json(401, {"error": "password required"})
         elif url.path == "/api/channels":
             self._json(200, audited_channels())
         elif url.path == "/api/audit":
@@ -79,9 +88,12 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     global API_KEY
     API_KEY = load_api_key()
-    server = HTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Dashboard running at http://127.0.0.1:{PORT}  (Ctrl+C to stop)")
-    threading.Timer(0.8, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
+    host = "0.0.0.0" if HOSTED else "127.0.0.1"
+    server = ThreadingHTTPServer((host, PORT), Handler)
+    print(f"Dashboard running at http://{host}:{PORT}  (Ctrl+C to stop)"
+          + ("" if PASSWORD else "  [no DASHBOARD_PASSWORD set: anyone who can reach it can spend quota]"))
+    if not HOSTED:
+        threading.Timer(0.8, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

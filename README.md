@@ -13,6 +13,13 @@ or **NOT AVAILABLE** (private to the creator, such as audience age and location)
 Pick a creator, say what you are trying to do (film, audience, minimum reach),
 and it gives a rule-based verdict plus the full dashboard.
 
+## Host the live version (any creator, key kept secret)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/aiuserff360/youtube-creator-audit)
+
+Render reads `render.yaml`, asks for `YOUTUBE_API_KEY` and a `DASHBOARD_PASSWORD`,
+and gives you a URL where anyone with the password can type any creator.
+
 ## Run it yourself
 
 ```

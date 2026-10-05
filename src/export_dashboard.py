@@ -8,6 +8,7 @@ All channels in one page with a picker: docs/index.html (served by GitHub Pages)
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -18,12 +19,14 @@ from yt_channel_audit import OUTPUT_DIR  # noqa: E402
 
 TEMPLATE = Path(__file__).resolve().parent / "dashboard_template.html"
 PLACEHOLDER = "/*__AUDIT_DATA__*/"
+LIVE_APP_URL = os.environ.get("LIVE_APP_URL", "")  # the hosted server, linked from the static page
 
 
 def embed(data):
     # "</" would end the <script> block early if it appeared in a title.
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
-    return TEMPLATE.read_text(encoding="utf-8").replace(PLACEHOLDER, payload)
+    return (TEMPLATE.read_text(encoding="utf-8").replace(PLACEHOLDER, payload)
+            .replace("/*__LIVE_APP_URL__*/", LIVE_APP_URL))
 
 
 def main():

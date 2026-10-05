@@ -1,0 +1,16 @@
+# One-click deploy on Render (https://render.com): New → Blueprint → this repo.
+services:
+  - type: web
+    name: youtube-creator-audit
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/serve.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: YOUTUBE_API_KEY
+        sync: false   # pasted in Render's dashboard, never committed
+      - key: DASHBOARD_PASSWORD
+        sync: false   # the password you give your boss

@@ -198,6 +198,7 @@
   <p id="empty" class="status" style="margin-top:24px"></p>
 </div>
 <div class="tooltip" id="tip"></div>
+<script>window.LIVE_APP_URL = "/*__LIVE_APP_URL__*/";</script>
 <script id="audit-data" type="application/json">/*__AUDIT_DATA__*/</script>
 <script>
 (function () {
@@ -515,21 +516,31 @@
     const list = Array.isArray(embedded) ? embedded : [embedded];
     chan.closest(".field").hidden = true;
     known.innerHTML = list.map((d, i) => `<option value="${i}">${esc(d.summary.profile.title)}</option>`).join("");
-    $("q-known-wrap").querySelector("span").textContent = "Creator (static page: only creators already audited)";
+    $("q-known-wrap").querySelector("span").innerHTML = "Creator — this public page only has creators already audited. " + (window.LIVE_APP_URL ? `For any creator use the <a href="${window.LIVE_APP_URL}">live app</a>.` : "Use the live app for any creator.");
     const idx = Math.max(0, list.findIndex((d) => [d.summary.profile.channel_id, d.summary.profile.handle].includes(q0.channel)));
     known.value = idx;
     form.onsubmit = (e) => { e.preventDefault(); const d = list[known.value], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id; show(d, q); window.scrollTo({ top: form.offsetTop + form.offsetHeight, behavior: "smooth" }); };
     const d = list[idx], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id; show(d, q);
   } else {                                                                      // served by src/serve.py
-    fetch("/api/channels").then((r) => r.json()).then((list) => {
+    const api = async (path) => {                                             // retries once with a password on 401
+      let key = ""; try { key = sessionStorage.getItem("dashKey") || ""; } catch (e) {}
+      let r = await fetch(path, { headers: key ? { "X-Dashboard-Key": key } : {} });
+      if (r.status === 401) { key = prompt("This dashboard is password-protected. Enter the password:") || "";
+        if (!key) throw new Error("password required");
+        try { sessionStorage.setItem("dashKey", key); } catch (e) {}
+        r = await fetch(path, { headers: { "X-Dashboard-Key": key } });
+        if (r.status === 401) { try { sessionStorage.removeItem("dashKey"); } catch (e) {} throw new Error("wrong password"); } }
+      return r;
+    };
+    api("/api/channels").then((r) => r.json()).then((list) => {
       known.innerHTML = `<option value="">—</option>` + list.map((c) => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join("");
-    }).catch(() => { $("empty").textContent = "Start the server with: .venv/bin/python src/serve.py"; });
+    }).catch((e) => { $("empty").textContent = e.message === "password required" || e.message === "wrong password" ? "Reload the page and enter the password to continue." : "Start the server with: .venv/bin/python src/serve.py"; });
     known.onchange = () => { if (known.value) chan.value = known.value; };
     form.onsubmit = (e) => { e.preventDefault(); const q = Q.read(); if (!q.channel) { status.textContent = "Enter a channel first."; return; } load(q); };
     async function load(q) {
       go.disabled = true; status.textContent = "Fetching from YouTube… (a large channel takes a minute)";
       try {
-        const r = await fetch("/api/audit?channel=" + encodeURIComponent(q.channel)), body = await r.json();
+        const r = await api("/api/audit?channel=" + encodeURIComponent(q.channel)), body = await r.json();
         if (!r.ok) throw new Error(body.error || r.statusText);
         show(body, q); status.textContent = `Done · quota used: ${body.quota_units_used} units`;
         window.scrollTo({ top: form.offsetTop + form.offsetHeight, behavior: "smooth" });
