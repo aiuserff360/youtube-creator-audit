@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator Audit Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f3f4f6; --surface: #ffffff; --surface-2: #f6f7f9;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
+    --tag-obs: #0ca30c; --tag-calc: #2a78d6; --tag-inf: #eb6834; --tag-na: #898781;
+    --tag-obs-bg: #e3f6e3; --tag-calc-bg: #e2eefb; --tag-inf-bg: #fdeae2; --tag-na-bg: #ebebe9;
+    --warn-bg: #fff6e0; --warn-ink: #7a4b00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232322;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+      --tag-obs-bg: #16321a; --tag-calc-bg: #142640; --tag-inf-bg: #3b1f14; --tag-na-bg: #2a2a28;
+      --warn-bg: #3a2c0c; --warn-ink: #fcd98a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232322;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+    --tag-obs-bg: #16321a; --tag-calc-bg: #142640; --tag-inf-bg: #3b1f14; --tag-na-bg: #2a2a28;
+    --warn-bg: #3a2c0c; --warn-ink: #fcd98a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+         font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.45; }
+  a { color: inherit; }
+  .wrap { max-width: 1360px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -0.3px; }
+  .sub { color: var(--ink-2); margin: 2px 0 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--ink-2); align-items: center; }
+  .search { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
+  .search input, .search select { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+                                  background: var(--surface); color: var(--ink); min-width: 260px; }
+  .search button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--series-1); color: #fff; cursor: pointer; }
+  .search button:disabled { opacity: .5; cursor: default; }
+  .status { color: var(--ink-2); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-6 { grid-column: span 6; }
+  .span-4 { grid-column: span 4; } .span-3 { grid-column: span 3; }
+  @media (max-width: 1000px) { .span-8, .span-6, .span-4, .span-3 { grid-column: span 6; } }
+  @media (max-width: 640px) { .span-8, .span-6, .span-4, .span-3 { grid-column: span 12; } h1 { font-size: 22px; } }
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .tile .label { font-size: 12px; color: var(--ink-2); }
+  .tile .value { font-size: 26px; font-weight: 600; margin: 2px 0; }
+  .tile .note { font-size: 11px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; white-space: nowrap; vertical-align: middle; }
+  .tag-obs { color: var(--tag-obs); background: var(--tag-obs-bg); }
+  .tag-calc { color: var(--tag-calc); background: var(--tag-calc-bg); }
+  .tag-inf { color: var(--tag-inf); background: var(--tag-inf-bg); }
+  .tag-na { color: var(--tag-na); background: var(--tag-na-bg); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .kv td:first-child { color: var(--ink-2); width: 38%; }
+  .chart { width: 100%; height: 190px; display: block; }
+  .chart text { font-family: inherit; font-size: 11px; fill: var(--muted); }
+  .chart .grid-line { stroke: var(--grid); stroke-width: 1; }
+  .chart .axis-line { stroke: var(--axis); stroke-width: 1; }
+  .chart .bar { fill: var(--series-1); }
+  .chart .bar.hl { fill: var(--series-2); }
+  .chart .bar:hover { opacity: .8; }
+  .chart .lbl { fill: var(--ink-2); }
+  .hbars .row { display: grid; grid-template-columns: 150px 1fr 60px; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px; }
+  .hbars .track { height: 14px; position: relative; }
+  .hbars .fill { height: 14px; border-radius: 0 4px 4px 0; background: var(--series-1); }
+  .hbars .fill.hl { background: var(--series-2); }
+  .hbars .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .donut { display: flex; gap: 16px; align-items: center; }
+  .donut svg { width: 120px; height: 120px; flex: none; }
+  .key { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .na { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; color: var(--ink-2); }
+  .na ul, .obs ul { margin: 6px 0 0; padding-left: 18px; }
+  .obs li { margin-bottom: 5px; }
+  .warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 8px; }
+  .small { font-size: 12px; color: var(--muted); }
+  .tooltip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); padding: 6px 8px;
+             border-radius: 6px; font-size: 12px; display: none; z-index: 10; max-width: 260px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { font: inherit; font-size: 12px; padding: 3px 9px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+  .seg button.on { background: var(--series-1); color: #fff; }
+  .film input { font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; width: 100%;
+                background: var(--surface); color: var(--ink); margin-bottom: 8px; }
+  .ellipsis { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  #app[hidden], .search[hidden], [hidden] { display: none !important; }
+  footer { margin: 18px 0 8px; color: var(--muted); font-size: 12px; }
+  .ask { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
+  @media (max-width: 800px) { .ask { grid-template-columns: 1fr; } }
+  .ask h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .field { display: block; margin-bottom: 9px; }
+  .field span { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 3px; }
+  .field input, .field select { font: inherit; width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+                                background: var(--surface); color: var(--ink); }
+  .actions { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .actions button { font: inherit; padding: 9px 18px; border: 0; border-radius: 8px; background: var(--series-1); color: #fff; cursor: pointer; font-weight: 600; }
+  .actions button:disabled { opacity: .5; cursor: default; }
+  .verdict { border-left: 4px solid var(--series-1); }
+  .verdict .head { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+  .verdict ul { margin: 6px 0; padding-left: 18px; } .verdict li { margin-bottom: 4px; }
+  .verdict .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+  @media (max-width: 800px) { .verdict .cols { grid-template-columns: 1fr; } }
+  .v-strong { border-left-color: var(--tag-obs); } .v-weak { border-left-color: var(--tag-inf); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">Creator Audit Dashboard</h1>
+      <p class="sub" id="subtitle">Public YouTube data, tagged by how much to trust it.</p>
+    </div>
+    <div class="legend">
+      <span class="tag tag-obs">OBSERVED</span> straight from YouTube
+      <span class="tag tag-calc">CALCULATED</span> arithmetic on observed
+      <span class="tag tag-inf">INFERRED</span> our interpretation
+      <span class="tag tag-na">NOT AVAILABLE</span> private to the creator
+    </div>
+  </header>
+
+  <form class="card" id="ask" style="margin-bottom:12px">
+    <div class="ask">
+      <div>
+        <h3>1 · Who are we researching?</h3>
+        <label class="field"><span>Creator's YouTube channel (@handle or UC… ID)</span><input id="q-channel" placeholder="@FilmiIndian" autocomplete="off"></label>
+        <label class="field" id="q-known-wrap"><span>…or pick a creator already audited</span><select id="q-known"></select></label>
+        <label class="field"><span>Language the creator speaks in their videos</span>
+          <select id="q-lang"><option value="">Not sure (guess from titles)</option><option>Telugu</option><option>Hindi</option><option>Tamil</option><option>English</option><option>Other</option></select></label>
+      </div>
+      <div>
+        <h3>2 · What are we trying to do?</h3>
+        <label class="field"><span>Goal</span>
+          <select id="q-goal"><option value="film">Promote a specific Telugu film</option><option value="reach">Assess general Telugu-cinema reach</option></select></label>
+        <label class="field"><span>Film(s) to check on this channel, comma-separated (the film itself or comparable ones)</span><input id="q-films" placeholder="Mirai, Kalki 2898 AD"></label>
+        <label class="field"><span>Audience we need to reach</span>
+          <select id="q-aud"><option value="telugu">Telugu-speaking (original release)</option><option value="hindi">Hindi-dubbed release</option><option value="both">Both / pan-India</option></select></label>
+        <label class="field"><span>Minimum views per video we care about (optional)</span><input id="q-min" type="number" min="0" placeholder="e.g. 100000"></label>
+      </div>
+      <div class="actions"><button id="go" type="submit">Get the answer</button><span class="status" id="status"></span></div>
+    </div>
+  </form>
+
+  <div id="app" hidden>
+    <section class="card verdict" id="verdict" style="margin-bottom:12px"></section>
+    <div class="tiles" id="tiles"></div>
+    <div class="grid" style="margin-top:12px">
+      <section class="card span-4"><h2>Channel overview</h2><table class="kv" id="overview"></table></section>
+      <section class="card span-8"><h2>Performance by window <span class="small">last N uploads vs all public videos</span></h2>
+        <div style="overflow:auto"><table id="windows"></table></div></section>
+
+      <section class="card span-6"><h2>Uploads per month <span class="tag tag-calc">CALCULATED</span></h2>
+        <svg class="chart" id="chart-uploads"></svg></section>
+      <section class="card span-6"><h2>Views to date of videos uploaded each month <span class="tag tag-calc">CALCULATED</span></h2>
+        <svg class="chart" id="chart-views"></svg>
+        <p class="small" style="margin:6px 0 0">Recent months look low because their videos are still collecting views.</p></section>
+
+      <section class="card span-4"><h2>Content mix by industry <span class="seg" id="mix-seg"><button data-w="last_30" class="on">Last 30</button><button data-w="lifetime">All</button></span></h2>
+        <div class="hbars" id="mix"></div>
+        <p class="small" style="margin:8px 0 0"><span class="tag tag-inf">INFERRED</span> from keywords in title, description and tags.</p></section>
+      <section class="card span-4"><h2>Format split <span class="tag tag-inf">INFERRED</span></h2><div class="donut" id="format"></div>
+        <p class="small" style="margin:8px 0 0">Short = 3 minutes or less. The API does not say whether a video is a Short.</p></section>
+      <section class="card span-4"><h2>Telugu performance</h2><table id="telugu"></table><div id="telugu-note"></div></section>
+
+      <section class="card span-4 film"><h2>Film check <span class="tag tag-calc">CALCULATED</span></h2>
+        <input id="film" placeholder="Type a film name, e.g. Mirai">
+        <div id="film-out" class="small">Shows every video whose title mentions the film and how it did against the 30 videos around it.</div></section>
+      <section class="card span-4"><h2>Top 10 videos by views <span class="tag tag-obs">OBSERVED</span></h2><table id="top"></table></section>
+      <section class="card span-4"><h2>Latest 10 uploads</h2><table id="recent"></table></section>
+
+      <section class="card span-4"><h2>Audience <span class="tag tag-na">NOT AVAILABLE</span></h2><div class="na" id="audience"></div></section>
+      <section class="card span-4 obs"><h2>Observations <span class="tag tag-inf">INFERRED</span></h2><ul id="observations"></ul></section>
+      <section class="card span-4"><h2>Label confidence and caveats</h2><div id="caveats"></div></section>
+    </div>
+    <footer id="footer"></footer>
+  </div>
+  <p id="empty" class="status" style="margin-top:24px"></p>
+</div>
+<div class="tooltip" id="tip"></div>
+<script id="audit-data" type="application/json">/*__AUDIT_DATA__*/</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const WINDOWS = [["last_10", "Last 10"], ["last_20", "Last 20"], ["last_30", "Last 30"], ["lifetime", "All"]];
+  const TAG = { OBSERVED: "obs", CALCULATED: "calc", INFERRED: "inf", "NOT AVAILABLE": "na" };
+  const tag = (t, extra) => `<span class="tag tag-${TAG[t]}">${t}${extra ? " on INFERRED" : ""}</span>`;
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const compact = (v) => v == null ? "n/a" : Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + "M"
+                       : Math.abs(v) >= 1e3 ? (v / 1e3).toFixed(v >= 1e4 ? 0 : 1) + "K" : String(Math.round(v * 100) / 100);
+  const full = (v) => v == null ? "n/a" : Number(v).toLocaleString("en-US");
+  const pct = (v, d = 0) => v == null ? "n/a" : v.toFixed(d) + "%";
+  const num = (v, d = 2) => v == null ? "n/a" : Number(v).toLocaleString("en-US", { maximumFractionDigits: d });
+  const date = (iso) => iso ? iso.slice(0, 10) : "";
+  const median = (a) => { const s = a.filter((x) => x != null).sort((x, y) => x - y); if (!s.length) return null;
+                          const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+  // ── tooltip ─────────────────────────────────────────────────────────────
+  const tip = $("tip");
+  function bindTips(root) {
+    root.querySelectorAll("[data-tip]").forEach((el) => {
+      el.addEventListener("mousemove", (e) => { tip.textContent = el.dataset.tip; tip.style.display = "block";
+        tip.style.left = Math.min(e.clientX + 12, window.innerWidth - 270) + "px"; tip.style.top = (e.clientY + 12) + "px"; });
+      el.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+    });
+  }
+
+  // ── charts (inline SVG) ─────────────────────────────────────────────────
+  function columnChart(svg, points, fmt) {
+    const W = svg.clientWidth || 560, H = 190, padL = 44, padR = 8, padT = 10, padB = 28;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const max = Math.max(1, ...points.map((p) => p.v));
+    const step = niceStep(max), top = Math.ceil(max / step) * step;
+    const y = (v) => padT + (H - padT - padB) * (1 - v / top);
+    const slot = (W - padL - padR) / points.length, bw = Math.min(24, Math.max(3, slot - 2));
+    let s = "";
+    for (let g = 0; g <= top; g += step) {
+      s += `<line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${y(g)}" y2="${y(g)}"/>` +
+           `<text x="${padL - 6}" y="${y(g) + 4}" text-anchor="end">${compact(g)}</text>`;
+    }
+    points.forEach((p, i) => {
+      const x = padL + i * slot + (slot - bw) / 2, h = Math.max(0, y(0) - y(p.v));
+      s += `<path class="bar" data-tip="${esc(p.label)}: ${esc(fmt(p.v))}" d="${roundedTop(x, y(p.v), bw, h)}"/>`;
+      if (points.length <= 24 && (i % Math.ceil(points.length / 8) === 0 || i === points.length - 1))
+        s += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle">${esc(p.short)}</text>`;
+    });
+    s += `<line class="axis-line" x1="${padL}" x2="${W - padR}" y1="${y(0)}" y2="${y(0)}"/>`;
+    svg.innerHTML = s; bindTips(svg);
+  }
+  function roundedTop(x, y, w, h) {
+    const r = Math.min(4, w / 2, h);
+    return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
+  }
+  function niceStep(max) { const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    return [1, 2, 2.5, 5, 10].map((m) => m * p).find((s) => s >= raw); }
+
+  function hbars(el, items, highlight) {
+    const max = Math.max(1, ...items.map((i) => i.v));
+    el.innerHTML = items.map((i) => `<div class="row"><span class="ellipsis" title="${esc(i.k)}">${esc(i.k)}</span>
+      <div class="track"><div class="fill${i.k === highlight ? " hl" : ""}" style="width:${(i.v / max * 100).toFixed(1)}%" data-tip="${esc(i.k)}: ${i.v} videos"></div></div>
+      <span class="n">${i.v}</span></div>`).join("");
+    bindTips(el);
+  }
+
+  function donut(el, parts) {
+    const total = parts.reduce((a, p) => a + p.v, 0) || 1, r = 44, c = 2 * Math.PI * r;
+    let off = 0, s = `<svg viewBox="0 0 120 120">`;
+    parts.forEach((p) => { const len = p.v / total * c;
+      s += `<circle r="${r}" cx="60" cy="60" fill="none" stroke="${p.color}" stroke-width="16" stroke-dasharray="${Math.max(0, len - 2)} ${c - Math.max(0, len - 2) + 2}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)" data-tip="${esc(p.k)}: ${p.v} (${(p.v / total * 100).toFixed(0)}%)"/>`;
+      off += len; });
+    s += `<text x="60" y="65" text-anchor="middle" style="font-size:16px;font-weight:600;fill:var(--ink)">${total}</text></svg>`;
+    el.innerHTML = s + `<div class="key">${parts.map((p) => `<div><span class="swatch" style="background:${p.color}"></span>${esc(p.k)}: <strong>${p.v}</strong> (${(p.v / total * 100).toFixed(0)}%)</div>`).join("")}</div>`;
+    bindTips(el);
+  }
+
+  // ── render ──────────────────────────────────────────────────────────────
+  function render(data) {
+    const S = data.summary, P = S.profile, W = S.windows, V = data.videos.slice().sort((a, b) => (b.published || "").localeCompare(a.published || ""));
+    const l30 = W.last_30, life = W.lifetime;
+    document.title = `${P.title} — Creator Audit`;
+    $("title").textContent = P.title;
+    $("subtitle").innerHTML = `${esc(P.handle || "")} · <a href="${esc(P.url)}" target="_blank" rel="noopener">${esc(P.url)}</a> · data pulled ${esc(date(S.generated_at))}`;
+
+    // tiles
+    const tiles = [
+      ["Subscribers", compact(P.subscribers), "OBSERVED", P.subscribers == null ? "hidden by creator" : "rounded by YouTube"],
+      ["Typical views, last 30", compact(l30.median_views), "CALCULATED", "median per video"],
+      ["Engagement, last 30", pct(l30.engagement_per_view_pct, 2), "CALCULATED", "likes + comments per 100 views"],
+      ["Uploads per month", num(l30.uploads_per_month, 0), "CALCULATED", "last 30 videos"],
+      ["Telugu share, last 30", pct(l30.telugu_share_pct, 0), "CALCULATED", `${l30.language_mix.Telugu || 0} of ${l30.video_count_in_window} videos`, true],
+      ["Telugu affinity, last 30", num(l30.telugu_affinity_index), "CALCULATED", "Telugu median ÷ channel median", true],
+    ];
+    $("tiles").innerHTML = tiles.map(([l, v, t, n, inf]) => `<div class="tile"><div class="label">${l}</div><div class="value">${v}</div><div class="note">${n} · ${tag(t, inf)}</div></div>`).join("");
+
+    // overview
+    const latest = V[0], first = V[V.length - 1];
+    const langHint = titleLanguageHint(V);
+    $("overview").innerHTML = [
+      ["Channel", `${esc(P.title)} (${esc(P.handle || "no handle")})`, "OBSERVED"],
+      ["Channel ID", esc(P.channel_id), "OBSERVED"],
+      ["Country set by creator", esc(P.country || "not set"), "OBSERVED"],
+      ["Channel created", date(P.created), "OBSERVED"],
+      ["Public videos", `${full(P.video_count)} (first ${date(first.published)}, latest ${date(latest.published)})`, "OBSERVED"],
+      ["Total views", full(P.total_views), "OBSERVED"],
+      ["Language in titles", langHint, "INFERRED"],
+      ["Format", `${pct(life.shorts_pct, 0)} Shorts`, "INFERRED"],
+    ].map(([k, v, t]) => `<tr><td>${k}</td><td>${v} ${tag(t)}</td></tr>`).join("");
+
+    // windows table
+    const rows = [
+      ["Videos in window", "video_count_in_window", (v) => full(v)],
+      ["Typical views (median)", "median_views", full], ["Average views", "avg_views", (v) => full(Math.round(v))],
+      ["Typical likes", "median_likes", full], ["Typical comments", "median_comments", full],
+      ["Engagement per view", "engagement_per_view_pct", (v) => pct(v, 2)],
+      ["Views ÷ subscribers", "views_to_subscriber_ratio", (v) => num(v, 2)],
+      ["Uploads per month", "uploads_per_month", (v) => num(v, 1)],
+      ["Consistency (within ½× to 2× median)", "consistency_pct", (v) => pct(v, 0)],
+      ["Viral rate (above 2× median)", "viral_rate_pct", (v) => pct(v, 0)],
+    ];
+    $("windows").innerHTML = `<tr><th>Measure</th>${WINDOWS.map(([, l]) => `<th class="n">${l}</th>`).join("")}<th>Tag</th></tr>` +
+      rows.map(([l, k, f]) => `<tr><td>${l}</td>${WINDOWS.map(([w]) => `<td class="n">${f(W[w][k])}</td>`).join("")}<td>${tag("CALCULATED")}</td></tr>`).join("");
+
+    // monthly charts (last 24 months)
+    const byMonth = new Map();
+    V.forEach((v) => { const m = (v.published || "").slice(0, 7); if (!m) return;
+      const e = byMonth.get(m) || { n: 0, views: 0 }; e.n++; e.views += v.views || 0; byMonth.set(m, e); });
+    const months = [...byMonth.keys()].sort().slice(-24);
+    const short = (m) => new Date(m + "-01T00:00:00Z").toLocaleString("en", { month: "short", year: "2-digit", timeZone: "UTC" });
+    columnChart($("chart-uploads"), months.map((m) => ({ label: m, short: short(m), v: byMonth.get(m).n })), (v) => `${v} uploads`);
+    columnChart($("chart-views"), months.map((m) => ({ label: m, short: short(m), v: byMonth.get(m).views })), (v) => `${full(v)} views to date`);
+
+    // content mix
+    const drawMix = (w) => hbars($("mix"), Object.entries(W[w].language_mix).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ k, v })), "Telugu");
+    drawMix("last_30");
+    $("mix-seg").querySelectorAll("button").forEach((b) => b.onclick = () => { $("mix-seg").querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on"); drawMix(b.dataset.w); });
+
+    // format split
+    const shorts = V.filter((v) => v.is_short).length;
+    donut($("format"), [{ k: "Shorts (≤ 3 min)", v: shorts, color: "var(--series-1)" }, { k: "Longer videos", v: V.length - shorts, color: "var(--series-2)" }]);
+
+    // telugu
+    const trows = [["Telugu-labelled videos", (w) => full(W[w].language_mix.Telugu || 0)], ["Share of videos", (w) => pct(W[w].telugu_share_pct, 0)],
+      ["Typical views, Telugu", (w) => full(W[w].telugu_median_views)], ["Engagement, Telugu", (w) => pct(W[w].telugu_engagement_pct, 2)],
+      ["Affinity (Telugu ÷ channel median)", (w) => num(W[w].telugu_affinity_index)]];
+    $("telugu").innerHTML = `<tr><th></th>${WINDOWS.map(([, l]) => `<th class="n">${l}</th>`).join("")}</tr>` +
+      trows.map(([l, f]) => `<tr><td>${l}</td>${WINDOWS.map(([w]) => `<td class="n">${f(w)}</td>`).join("")}</tr>`).join("");
+    const tel = V.filter((v) => v.language_bucket === "Telugu"), telTitle = tel.filter((v) => v.matched_in === "title").length,
+          telMixed = tel.filter((v) => v.also_matched).length;
+    $("telugu-note").innerHTML = `<p class="small" style="margin:8px 0 0">${tag("CALCULATED", true)} Affinity above 1 means Telugu videos beat the channel's usual video.</p>` +
+      (tel.length ? `<div class="warn">Label confidence: ${telTitle} of ${tel.length} Telugu labels come from the title; ${telMixed} also mention another industry in tags or description. Treat Telugu figures as provisional until labels are verified.</div>` : "");
+
+    // film check
+    const filmOut = $("film-out"), filmIn = $("film");
+    const runFilm = () => {
+      const q = filmIn.value.trim().toLowerCase();
+      if (q.length < 2) { filmOut.innerHTML = "Shows every video whose title mentions the film and how it did against the 30 videos around it."; return; }
+      const hits = V.map((v, i) => [v, i]).filter(([v]) => v.title.toLowerCase().includes(q));
+      if (!hits.length) { filmOut.textContent = `No titles contain "${filmIn.value.trim()}".`; return; }
+      filmOut.innerHTML = `<table><tr><th>Date</th><th>Title</th><th class="n">Views</th><th class="n">vs typical</th><th class="n">Eng.</th></tr>` + hits.slice(0, 12).map(([v, i]) => {
+        const around = V.slice(Math.max(0, i - 15), i).concat(V.slice(i + 1, i + 16)).map((x) => x.views), m = median(around);
+        const eng = v.views && v.likes != null ? ((v.likes + (v.comments || 0)) / v.views * 100).toFixed(2) + "%" : "n/a";
+        return `<tr><td>${date(v.published)}</td><td><a class="ellipsis" style="max-width:170px" href="${esc(v.url)}" target="_blank" rel="noopener" title="${esc(v.title)}">${esc(v.title)}</a></td><td class="n">${full(v.views)}</td><td class="n">${m ? (v.views / m).toFixed(2) + "×" : "n/a"}</td><td class="n">${eng}</td></tr>`;
+      }).join("") + `</table><p class="small" style="margin:6px 0 0">"vs typical" = views ÷ median of the 30 videos published around it. ${tag("OBSERVED")} views, likes · ${tag("CALCULATED")} ratios${hits.length > 12 ? ` · showing 12 of ${hits.length}` : ""}</p>`;
+    };
+    filmIn.oninput = runFilm; runFilm();
+
+    // top + recent
+    const vrow = (v) => `<tr><td>${date(v.published)}</td><td><a class="ellipsis" style="max-width:190px" href="${esc(v.url)}" target="_blank" rel="noopener" title="${esc(v.title)}">${esc(v.title)}</a>
+      <span class="small">${esc(v.language_bucket)}</span></td><td class="n">${compact(v.views)}</td><td class="n">${compact(v.likes)}</td></tr>`;
+    const head = `<tr><th>Date</th><th>Title · label <span class="tag tag-inf">INF</span></th><th class="n">Views</th><th class="n">Likes</th></tr>`;
+    $("top").innerHTML = head + V.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10).map(vrow).join("");
+    $("recent").innerHTML = head + V.slice(0, 10).map(vrow).join("");
+
+    // audience
+    $("audience").innerHTML = `The public API does not expose who watches. These are private to the creator's YouTube Studio:
+      <ul><li>Age and gender</li><li>Countries and cities</li><li>Watch time, impressions, click-through rate</li><li>Traffic sources</li></ul>
+      <p style="margin:8px 0 0">To get them, ask the creator for YouTube Studio audience screenshots, or for viewer access to the channel's analytics.</p>
+      <p class="small" style="margin:6px 0 0">Not yet built: comment-language sampling as a rough proxy ${tag("INFERRED")}.</p>`;
+
+    // observations (rule-based)
+    const obs = [];
+    const ratio = l30.views_to_subscriber_ratio;
+    if (l30.consistency_pct >= 70) obs.push(`Dependable reach: ${pct(l30.consistency_pct, 0)} of the last 30 videos land within half to double the typical view count.`);
+    else if (l30.viral_rate_pct >= 25) obs.push(`Hit-driven reach: ${pct(l30.viral_rate_pct, 0)} of the last 30 videos got more than double the typical views, and only ${pct(l30.consistency_pct, 0)} were near it.`);
+    else obs.push(`Uneven reach: only ${pct(l30.consistency_pct, 0)} of the last 30 videos land near the typical view count.`);
+    if (ratio != null) obs.push(ratio >= 0.5 ? `A typical recent video reaches ${num(ratio, 2)}× the subscriber count, so views come well beyond subscribers.` : `A typical recent video reaches ${pct(ratio * 100, 0)} of the subscriber count.`);
+    if (l30.median_views != null && life.median_views != null) { const d = l30.median_views / life.median_views;
+      obs.push(d >= 1.15 ? `Reach is rising: recent typical views are ${num(d, 2)}× the all-time typical.` : d <= 0.85 ? `Reach is fading: recent typical views are ${num(d, 2)}× the all-time typical.` : `Reach is stable: recent typical views are about the all-time typical.`); }
+    if (life.shorts_pct >= 80) obs.push("A Shorts channel: nearly every upload is 3 minutes or less.");
+    else if (life.shorts_pct <= 20) obs.push("A long-form channel: most uploads are longer than 3 minutes.");
+    const ts = l30.telugu_share_pct || 0;
+    obs.push(ts >= 30 ? `Telugu films are a core topic (${pct(ts, 0)} of the last 30 videos).` : ts >= 10 ? `Telugu films are a regular but minor topic (${pct(ts, 0)} of the last 30 videos).` : `Telugu films are occasional (${pct(ts, 0)} of the last 30 videos).`);
+    if (l30.telugu_affinity_index != null && (l30.language_mix.Telugu || 0) >= 5)
+      obs.push(l30.telugu_affinity_index >= 1.2 ? `Telugu videos out-perform: ${num(l30.telugu_affinity_index)}× the channel's typical views recently.` : l30.telugu_affinity_index <= 0.8 ? `Telugu videos under-perform: ${num(l30.telugu_affinity_index)}× the channel's typical views recently.` : "Telugu videos perform about the same as the rest of the channel.");
+    else if (l30.telugu_affinity_index != null) obs.push(`Too few Telugu videos in the last 30 (${l30.language_mix.Telugu || 0}) to judge Telugu affinity.`);
+    $("observations").innerHTML = obs.map((o) => `<li>${o}</li>`).join("");
+
+    // caveats
+    const unl = (life.language_mix["Other/Unclear"] || 0) + (life.language_mix["OTT/Other"] || 0);
+    $("caveats").innerHTML = `<ul style="margin:0;padding-left:18px">
+      <li>${unl} of ${V.length} videos (${pct(unl / V.length * 100, 0)}) have no industry label, so industry shares are lower bounds.</li>
+      ${S.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>`;
+
+    $("footer").textContent = `Source: YouTube Data API v3, fetched ${S.generated_at}. Windows are the most recent N public uploads by publish date.`;
+    $("app").hidden = false; $("empty").textContent = "";
+  }
+
+  function titleLanguageHint(V) {
+    const langs = ["hindi", "telugu", "tamil", "english", "malayalam", "kannada"], n = V.length;
+    const counts = langs.map((l) => [l, V.filter((v) => new RegExp("(?<!\\w)" + l + "(?!\\w)", "i").test(v.title)).length]).filter(([, c]) => c / n >= 0.01).sort((a, b) => b[1] - a[1]);
+    if (!counts.length) return "titles rarely name a language";
+    return counts.slice(0, 3).map(([l, c]) => `${l[0].toUpperCase() + l.slice(1)} in ${pct(c / n * 100, 0)} of titles`).join(", ");
+  }
+
+  // ── the question ────────────────────────────────────────────────────────
+  const Q = {
+    read() { return { channel: $("q-channel").value.trim(), lang: $("q-lang").value, goal: $("q-goal").value,
+                      films: $("q-films").value.split(",").map((f) => f.trim()).filter(Boolean),
+                      aud: $("q-aud").value, min: Number($("q-min").value) || 0 }; },
+    write(q) { $("q-channel").value = q.channel || ""; $("q-lang").value = q.lang || ""; $("q-goal").value = q.goal || "film";
+               $("q-films").value = (q.films || []).join(", "); $("q-aud").value = q.aud || "telugu"; $("q-min").value = q.min || ""; },
+    fromUrl() { const p = new URLSearchParams(location.search);
+      return { channel: p.get("channel") || "", lang: p.get("lang") || "", goal: p.get("goal") || "film",
+               films: (p.get("films") || "").split(",").map((f) => f.trim()).filter(Boolean), aud: p.get("aud") || "telugu", min: Number(p.get("min")) || 0 }; },
+    toUrl(q) { const p = new URLSearchParams(); if (q.channel) p.set("channel", q.channel); if (q.lang) p.set("lang", q.lang);
+      p.set("goal", q.goal); if (q.films.length) p.set("films", q.films.join(",")); p.set("aud", q.aud); if (q.min) p.set("min", q.min);
+      history.replaceState(null, "", "?" + p.toString()); },
+  };
+
+  function filmHits(V, name) {
+    const q = name.toLowerCase();
+    return V.map((v, i) => [v, i]).filter(([v]) => v.title.toLowerCase().includes(q)).map(([v, i]) => {
+      const m = median(V.slice(Math.max(0, i - 15), i).concat(V.slice(i + 1, i + 16)).map((x) => x.views));
+      return { v, ratio: m ? v.views / m : null, eng: v.views && v.likes != null ? (v.likes + (v.comments || 0)) / v.views * 100 : null };
+    });
+  }
+
+  function answer(data, q) {
+    const S = data.summary, P = S.profile, W = S.windows, l30 = W.last_30, life = W.lifetime;
+    const V = data.videos.slice().sort((a, b) => (b.published || "").localeCompare(a.published || ""));
+    const pros = [], cons = [], notes = []; let score = 0;
+
+    // reach
+    const med = l30.median_views;
+    if (q.min) { if (med >= q.min) { score += 2; pros.push(`Reach meets your bar: a typical recent video gets ${full(med)} views against the ${full(q.min)} you need.`); }
+      else if (med >= q.min / 2) { score += 1; cons.push(`Reach is below your bar: ${full(med)} typical views against ${full(q.min)} needed.`); }
+      else cons.push(`Reach is far below your bar: ${full(med)} typical views against ${full(q.min)} needed.`); }
+    else { score += 1; notes.push(`A typical recent video gets ${full(med)} views (no minimum was set).`); }
+    if (l30.consistency_pct >= 70) { score += 1; pros.push(`Reach is dependable: ${pct(l30.consistency_pct, 0)} of recent videos land near the typical figure.`); }
+    else cons.push(`Reach is uneven: only ${pct(l30.consistency_pct, 0)} of recent videos land near the typical figure.`);
+
+    // language match
+    const lang = q.lang || guessLang(V), langTag = q.lang ? "stated by you" : "guessed from titles";
+    if (!lang) { score += 1; notes.push("Creator's language is unknown; titles don't name one. Tell us and the answer gets sharper."); }
+    else {
+      const match = q.aud === "both" ? (lang === "Telugu" || lang === "Hindi") : q.aud === "telugu" ? lang === "Telugu" : lang === "Hindi";
+      if (match) { score += 2; pros.push(`Language fits: the creator speaks ${lang} (${langTag}) and you want the ${audLabel(q.aud)} audience.`); }
+      else cons.push(`Language mismatch: the creator speaks ${lang} (${langTag}), but you want the ${audLabel(q.aud)} audience.`);
+    }
+
+    // telugu content
+    const ts = l30.telugu_share_pct || 0, tn = l30.language_mix.Telugu || 0;
+    if (ts >= 30) { score += 2; pros.push(`Telugu films are a core topic: ${tn} of the last 30 videos.`); }
+    else if (ts >= 10) { score += 1; notes.push(`Telugu films are a regular but minor topic: ${tn} of the last 30 videos.`); }
+    else cons.push(`Telugu films are rare on this channel: ${tn} of the last 30 videos.`);
+    const aff = tn >= 5 ? l30.telugu_affinity_index : (life.language_mix.Telugu || 0) >= 10 ? life.telugu_affinity_index : null;
+    const affScope = tn >= 5 ? "recently" : "across all videos";
+    if (aff == null) cons.push("Too few Telugu-labelled videos to tell whether Telugu content does better or worse here.");
+    else if (aff >= 1.2) { score += 2; pros.push(`Telugu videos out-perform ${affScope}: ${num(aff)}× the channel's typical views.`); }
+    else if (aff >= 0.8) { score += 1; notes.push(`Telugu videos perform about the same as the rest ${affScope} (${num(aff)}×).`); }
+    else cons.push(`Telugu videos under-perform ${affScope}: ${num(aff)}× the channel's typical views.`);
+
+    // film check
+    let best = null;
+    q.films.forEach((f) => { const hits = filmHits(V, f);
+      if (!hits.length) { notes.push(`"${f}": the creator has no video with that name in the title.`); return; }
+      const top = hits.reduce((a, b) => (b.ratio || 0) > (a.ratio || 0) ? b : a);
+      if (!best || top.ratio > best.ratio) best = top;
+      const line = `"${f}": ${hits.length} video${hits.length > 1 ? "s" : ""}; best did ${full(top.v.views)} views, ${num(top.ratio)}× the creator's typical at the time` + (top.eng != null ? `, ${top.eng.toFixed(2)}% engagement` : "") + ".";
+      (top.ratio >= 1.3 ? pros : top.ratio >= 0.9 ? notes : cons).push(line); });
+    if (best) score += best.ratio >= 1.3 ? 2 : best.ratio >= 0.9 ? 1 : 0;
+    else if (q.films.length) score += 0;
+    else notes.push("No films given to check; add the film or comparable ones to see how they did here.");
+
+    const maxScore = 2 + 1 + 2 + 2 + 2 + (q.films.length ? 2 : 0);
+    const frac = score / maxScore;
+    const verdict = frac >= 0.7 ? ["Strong fit", "v-strong"] : frac >= 0.45 ? ["Moderate fit", ""] : ["Weak fit", "v-weak"];
+    const goalText = q.goal === "film" ? `promoting ${q.films[0] ? `"${q.films[0]}"` : "a Telugu film"} to the ${audLabel(q.aud)} audience` : `reaching the ${audLabel(q.aud)} Telugu-cinema audience`;
+
+    const el = $("verdict"); el.className = "card verdict " + verdict[1];
+    el.innerHTML = `<h2>Answer to your question <span class="tag tag-inf">INFERRED · rule-based</span></h2>
+      <p class="head">${verdict[0]} for ${esc(goalText)} — ${esc(P.title)}</p>
+      <div class="cols"><div><strong>For</strong><ul>${pros.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>Nothing stands out in favour.</li>"}</ul></div>
+      <div><strong>Against</strong><ul>${cons.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>No major concerns in the public data.</li>"}</ul></div></div>
+      ${notes.length ? `<strong>Also note</strong><ul>${notes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      <p class="small" style="margin:8px 0 0">What this cannot tell you: who the viewers are (age, gender, location) — that is private to the creator. If this creator stays on your list, ask for YouTube Studio audience screenshots. Telugu figures depend on keyword labels and are provisional. The verdict weighs reach, consistency, language match, Telugu share, Telugu affinity and the film check equally; it is a starting point, not a decision.</p>`;
+    if (q.films[0]) { const fi = $("film"); fi.value = q.films[0]; fi.dispatchEvent(new Event("input")); }
+  }
+  const audLabel = (a) => a === "telugu" ? "Telugu-speaking" : a === "hindi" ? "Hindi-dubbed" : "pan-India";
+  function guessLang(V) {
+    const langs = ["Hindi", "Telugu", "Tamil", "English", "Malayalam", "Kannada"];
+    const best = langs.map((l) => [l, V.filter((v) => new RegExp("(?<!\\w)" + l + "(?!\\w)", "i").test(v.title)).length]).sort((a, b) => b[1] - a[1])[0];
+    return best && best[1] / V.length >= 0.05 ? best[0] : "";
+  }
+
+  // ── data source: embedded (static export) or the local server ──────────
+  let embedded = null;
+  try { const t = $("audit-data").textContent.trim(); if (t && !t.startsWith("/*")) embedded = JSON.parse(t); } catch (e) { embedded = null; }
+  const form = $("ask"), chan = $("q-channel"), known = $("q-known"), status = $("status"), go = $("go");
+  const q0 = Q.fromUrl(); Q.write(q0);
+
+  function show(data, q) { Q.toUrl(q); render(data); answer(data, q); $("app").hidden = false; }
+
+  if (Array.isArray(embedded) || (embedded && !Array.isArray(embedded))) {   // static export
+    const list = Array.isArray(embedded) ? embedded : [embedded];
+    chan.closest(".field").hidden = true;
+    known.innerHTML = list.map((d, i) => `<option value="${i}">${esc(d.summary.profile.title)}</option>`).join("");
+    $("q-known-wrap").querySelector("span").textContent = "Creator (static page: only creators already audited)";
+    const idx = Math.max(0, list.findIndex((d) => [d.summary.profile.channel_id, d.summary.profile.handle].includes(q0.channel)));
+    known.value = idx;
+    form.onsubmit = (e) => { e.preventDefault(); const d = list[known.value], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id; show(d, q); window.scrollTo({ top: form.offsetTop + form.offsetHeight, behavior: "smooth" }); };
+    const d = list[idx], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id; show(d, q);
+  } else {                                                                      // served by src/serve.py
+    fetch("/api/channels").then((r) => r.json()).then((list) => {
+      known.innerHTML = `<option value="">—</option>` + list.map((c) => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join("");
+    }).catch(() => { $("empty").textContent = "Start the server with: .venv/bin/python src/serve.py"; });
+    known.onchange = () => { if (known.value) chan.value = known.value; };
+    form.onsubmit = (e) => { e.preventDefault(); const q = Q.read(); if (!q.channel) { status.textContent = "Enter a channel first."; return; } load(q); };
+    async function load(q) {
+      go.disabled = true; status.textContent = "Fetching from YouTube… (a large channel takes a minute)";
+      try {
+        const r = await fetch("/api/audit?channel=" + encodeURIComponent(q.channel)), body = await r.json();
+        if (!r.ok) throw new Error(body.error || r.statusText);
+        show(body, q); status.textContent = `Done · quota used: ${body.quota_units_used} units`;
+        window.scrollTo({ top: form.offsetTop + form.offsetHeight, behavior: "smooth" });
+      } catch (err) { status.textContent = "Error: " + err.message; }
+      go.disabled = false;
+    }
+    if (q0.channel) load(q0);
+  }
+})();
+</script>
+</body>
+</html>
