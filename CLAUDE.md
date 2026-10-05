@@ -115,7 +115,8 @@ Do not add "prepared by" or generator credits to any output.
 ## Published page (2026-10-05, user asked for it)
 - Repo: https://github.com/aiuserff360/youtube-creator-audit (public, account aiuserff360). `output/`, `data/raw/`, `.env`, `.venv/` are not committed.
 - GitHub Pages serves `docs/index.html` from `main`: https://aiuserff360.github.io/youtube-creator-audit/
-- To update after auditing new channels: `python src/export_dashboard.py`, then commit `docs/index.html` and push. The page goes live about a minute after the push.
+- Live app (any creator, password-protected, key held as a Render secret): https://youtube-creator-audit.onrender.com — deployed from `render.yaml` on Render's free tier (sleeps after 15 min idle; cache is wiped on restart). Render auto-redeploys on every push to `main`.
+- To update the static page after auditing new channels: `LIVE_APP_URL=https://youtube-creator-audit.onrender.com python src/export_dashboard.py`, then commit `docs/index.html` and push. The page goes live about a minute after the push.
 - The page's question form takes `?channel=&lang=&goal=&films=&aud=&min=` so a filled-in question can be shared as a link.
 
 ## Dashboard (added 2026-10-05)
