@@ -112,6 +112,12 @@ Do not add "prepared by" or generator credits to any output.
 └── output/<channel_slug>/
 ```
 
+## Published page (2026-10-05, user asked for it)
+- Repo: https://github.com/aiuserff360/youtube-creator-audit (public, account aiuserff360). `output/`, `data/raw/`, `.env`, `.venv/` are not committed.
+- GitHub Pages serves `docs/index.html` from `main`: https://aiuserff360.github.io/youtube-creator-audit/
+- To update after auditing new channels: `python src/export_dashboard.py`, then commit `docs/index.html` and push. The page goes live about a minute after the push.
+- The page's question form takes `?channel=&lang=&goal=&films=&aud=&min=` so a filled-in question can be shared as a link.
+
 ## Dashboard (added 2026-10-05)
 The boss wanted a dashboard view. Rules that follow from the ground rules: never embed the API key in a web page, so live "type any channel" lookups only work through `serve.py` on this machine; shareable files are static exports with data embedded and only cover channels already audited. Publishing `output/site/` (e.g. GitHub Pages) sends data off this machine — ask first. Audience demographics stay a NOT AVAILABLE panel; never fabricate them even if a mock-up shows them.
 
