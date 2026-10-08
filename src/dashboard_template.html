@@ -414,7 +414,8 @@
       <li>${unl} of ${V.length} videos (${pct(unl / V.length * 100, 0)}) have no industry label, so industry shares are lower bounds.</li>
       ${S.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>`;
 
-    $("footer").textContent = `Source: YouTube Data API v3, fetched ${S.generated_at}. Windows are the most recent N public uploads by publish date.`;
+    $("footer").textContent = `Source: YouTube Data API v3, fetched ${S.generated_at}. Windows are the most recent N public uploads by publish date.` + (data.site_note ? ` ${data.site_note}` : "");
+    if (data.site_note) $("film-out").insertAdjacentHTML("afterend", `<p class="small" style="margin:6px 0 0">${esc(data.site_note)}</p>`);
     $("app").hidden = false; $("empty").textContent = "";
   }
 
@@ -462,13 +463,24 @@
     if (l30.consistency_pct >= 70) { score += 1; pros.push(`Reach is dependable: ${pct(l30.consistency_pct, 0)} of recent videos land near the typical figure.`); }
     else cons.push(`Reach is uneven: only ${pct(l30.consistency_pct, 0)} of recent videos land near the typical figure.`);
 
-    // language match
-    const lang = q.lang || guessLang(V), langTag = q.lang ? "stated by you" : "guessed from titles";
-    if (!lang) { score += 1; notes.push("Creator's language is unknown; titles don't name one. Tell us and the answer gets sharper."); }
-    else {
-      const match = q.aud === "both" ? (lang === "Telugu" || lang === "Hindi") : q.aud === "telugu" ? lang === "Telugu" : lang === "Hindi";
-      if (match) { score += 2; pros.push(`Language fits: the creator speaks ${lang} (${langTag}) and you want the ${audLabel(q.aud)} audience.`); }
-      else cons.push(`Language mismatch: the creator speaks ${lang} (${langTag}), but you want the ${audLabel(q.aud)} audience.`);
+    // language / audience match: comment language when sampled, else the creator's stated or guessed language
+    const Aq = data.audience;
+    if (Aq && Aq.comments_sampled >= 30) {
+      const te = Aq.telugu_comment_pct, hi = Aq.hindi_comment_pct;
+      const want = q.aud === "telugu" ? te : q.aud === "hindi" ? hi : Math.max(te, hi);
+      const label = q.aud === "telugu" ? "Telugu" : q.aud === "hindi" ? "Hindi" : (te >= hi ? "Telugu" : "Hindi");
+      const line = `${want}% of ${Aq.comments_sampled} sampled comments are in ${label} (${te}% Telugu, ${hi}% Hindi; the rest English or unclear).`;
+      if (want >= 25) { score += 2; pros.push(`Audience language fits: ` + line); }
+      else if (want >= 10) { score += 1; notes.push(`Audience language is mixed: ` + line); }
+      else cons.push(`Audience language mismatch: only ` + line);
+    } else {
+      const lang = q.lang || guessLang(V), langTag = q.lang ? "stated by you" : "guessed from titles";
+      if (!lang) { score += 1; notes.push("Creator's language is unknown; titles don't name one. Tell us and the answer gets sharper."); }
+      else {
+        const match = q.aud === "both" ? (lang === "Telugu" || lang === "Hindi") : q.aud === "telugu" ? lang === "Telugu" : lang === "Hindi";
+        if (match) { score += 2; pros.push(`Language fits: the creator speaks ${lang} (${langTag}) and you want the ${audLabel(q.aud)} audience.`); }
+        else cons.push(`Language mismatch: the creator speaks ${lang} (${langTag}), but you want the ${audLabel(q.aud)} audience.`);
+      }
     }
 
     // telugu content
@@ -506,7 +518,7 @@
       <div class="cols"><div><strong>For</strong><ul>${pros.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>Nothing stands out in favour.</li>"}</ul></div>
       <div><strong>Against</strong><ul>${cons.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>No major concerns in the public data.</li>"}</ul></div></div>
       ${notes.length ? `<strong>Also note</strong><ul>${notes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-      <p class="small" style="margin:8px 0 0">What this cannot tell you: who the viewers are (age, gender, location) — that is private to the creator. If this creator stays on your list, ask for YouTube Studio audience screenshots. Telugu figures depend on keyword labels and are provisional. The verdict weighs reach, consistency, language match, Telugu share, Telugu affinity and the film check equally; it is a starting point, not a decision.</p>`;
+      <p class="small" style="margin:8px 0 0">What this cannot tell you: who the viewers are (age, gender, location) — that is private to the creator. If this creator stays on your list, ask for YouTube Studio audience screenshots. Telugu figures depend on keyword labels and are provisional. The verdict weighs reach, consistency, audience language (from sampled comments where available), Telugu share, Telugu affinity and the film check equally; it is a starting point, not a decision.</p>`;
     if (q.films[0]) { const fi = $("film"); fi.value = q.films[0]; fi.dispatchEvent(new Event("input")); }
   }
   const audLabel = (a) => a === "telugu" ? "Telugu-speaking" : a === "hindi" ? "Hindi-dubbed" : "pan-India";

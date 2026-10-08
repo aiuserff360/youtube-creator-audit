@@ -45,6 +45,9 @@ def build_comparison():
                "videos_fetched": s.get("videos_fetched"), "telugu_videos_last_30": w["language_mix"].get("Telugu", 0)}
         row.update({f"last30_{k}": w[k] for k in COMPARE_FIELDS})
         row.update({f"lifetime_{k}": s["windows"]["lifetime"][k] for k in ("telugu_share_pct", "telugu_affinity_index")})
+        a = s.get("audience_signals") or {}
+        row.update({"comments_sampled": a.get("comments_sampled"), "telugu_comment_pct": a.get("telugu_comment_pct"),
+                    "hindi_comment_pct": a.get("hindi_comment_pct"), "movie_specific_comment_pct": a.get("movie_specific_pct")})
         row["audited"] = s["generated_at"]
         rows.append(row)
     rows.sort(key=lambda r: ((r["last30_telugu_affinity_index"] or 0), (r["last30_telugu_share_pct"] or 0)), reverse=True)
@@ -61,8 +64,13 @@ def main():
     ap.add_argument("--max-videos", type=int, default=3000)
     ap.add_argument("--budget", type=int, default=5000)
     ap.add_argument("--refresh", action="store_true")
+    ap.add_argument("--comparison-only", action="store_true", help="rebuild output/comparison.csv from saved summaries, no API calls")
     args = ap.parse_args()
     max_videos = args.max_videos or None
+    if args.comparison_only:
+        rows = build_comparison()
+        print_comparison(rows)
+        return
 
     client = YouTubeClient(load_api_key(), refresh=args.refresh)
     done, failed, stopped = [], [], False
@@ -88,12 +96,17 @@ def main():
           + (" (stopped early)" if stopped else ""))
     if failed:
         print("Failed:", ", ".join(failed))
+    print_comparison(rows)
+
+
+def print_comparison(rows):
     print(f"\noutput/comparison.csv — {len(rows)} channels, sorted by last-30 Telugu affinity:\n")
-    print(f"{'channel':<30}{'subs':>12}{'med views':>11}{'eng%':>7}{'telugu%':>9}{'tel vids':>9}{'affinity':>10}")
+    print(f"{'channel':<30}{'subs':>12}{'med views':>11}{'eng%':>7}{'telugu%':>9}{'tel vids':>9}{'affinity':>10}{'te cmnt%':>10}")
     for r in rows:
+        tc = r.get("telugu_comment_pct")
         print(f"{r['channel'][:29]:<30}{(r['subscribers'] or 0):>12,}{(r['last30_median_views'] or 0):>11,}"
               f"{(r['last30_engagement_per_view_pct'] or 0):>7.2f}{(r['last30_telugu_share_pct'] or 0):>9.0f}"
-              f"{r['telugu_videos_last_30']:>9}{(r['last30_telugu_affinity_index'] or 0):>10.2f}")
+              f"{r['telugu_videos_last_30']:>9}{(r['last30_telugu_affinity_index'] or 0):>10.2f}{(f'{tc:.0f}' if tc is not None else '-'):>10}")
 
 
 if __name__ == "__main__":

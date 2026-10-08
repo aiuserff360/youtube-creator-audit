@@ -29,6 +29,21 @@ def embed(data):
             .replace("/*__LIVE_APP_URL__*/", LIVE_APP_URL))
 
 
+SITE_RECENT, SITE_TOP = 400, 100
+
+
+def slim_for_site(data):
+    """The all-channels page embeds dozens of channels; keep each one's recent + top videos only."""
+    videos = sorted(data["videos"], key=lambda v: v["published"] or "", reverse=True)
+    keep = {v["video_id"] for v in videos[:SITE_RECENT]}
+    keep |= {v["video_id"] for v in sorted(videos, key=lambda v: v["views"] or 0, reverse=True)[:SITE_TOP]}
+    slim = [v for v in videos if v["video_id"] in keep]
+    capped = len(slim) < len(videos)
+    return dict(data, videos=slim, videos_capped=capped,
+                videos_total=len(videos), site_note=(f"This shared page holds the {SITE_RECENT} most recent and {SITE_TOP} most-viewed "
+                                                      f"of {len(videos)} videos; the film check and top-10 cover those." if capped else ""))
+
+
 def main():
     slugs = sys.argv[1:] or [c["slug"] for c in audited_channels()]
     if not slugs:
@@ -43,7 +58,7 @@ def main():
     if not sys.argv[1:]:
         site = OUTPUT_DIR.parent / "docs" / "index.html"
         site.parent.mkdir(exist_ok=True)
-        site.write_text(embed(datasets), encoding="utf-8")
+        site.write_text(embed([slim_for_site(d) for d in datasets]), encoding="utf-8")
         print(f"wrote {site.relative_to(OUTPUT_DIR.parent)} ({len(datasets)} channels)")
 
 

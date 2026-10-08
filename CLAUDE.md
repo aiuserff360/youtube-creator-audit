@@ -108,6 +108,7 @@ Do not add "prepared by" or generator credits to any output.
 │   ├── discover.py           # finds candidate creators via "<film> review" searches (search.list, 100 u each; ask first)
 │   ├── transcripts.py        # phase 3: captions via youtube-transcript-api → data/transcripts/ (run from the user's own terminal)
 │   ├── classify_reviews.py   # phase 3: Claude classifies transcripts (sentiment, verdict, promo) → output/reviews/
+│   ├── comments.py           # phase 3: commentThreads sample (≤200/channel, ~10 u) → audience_signals (script/language mix)
 │   ├── dashboard_template.html  # single-page dashboard; renders embedded JSON or talks to serve.py
 │   ├── dashboard_data.py     # load output/<slug>/ files, slim video rows for the page
 │   ├── serve.py              # local server on 127.0.0.1:8765: type a handle → dashboard (key stays in .env)
@@ -125,6 +126,12 @@ Do not add "prepared by" or generator credits to any output.
 
 ## Creator discovery (added 2026-10-08)
 `src/discover.py` is the one place `search.list` is allowed, and only after the user confirms (the script asks, and `--dry-run` shows the cost). It searches "<film> review" for each film in `films.txt` (two variants: order=viewCount, and relevanceLanguage=te), collects the channels behind the results, looks them up with `channels.list`, and writes `output/discovery/candidates.csv` ranked by films covered then median review views. Searches are cached in `data/raw/_search/`. Default budget guard: 4,500 units. Known gaps: Telugu-script titles (add Telugu-script queries later), reviews that don't name the film, YouTube's 500-result cap per query.
+
+## State of the data (2026-10-08)
+- `discover.py` ran on 20 films (4,050 units): 751 candidate channels, 1,655 review videos → `output/discovery/`.
+- Shortlist in `channels.txt`: reviewed ≥5 of the films with median review views ≥30k, minus Netflix India and Aditya Music (41) + Mr Review Wala. `run_all.py` audited all 42 (2,746 units, 0 failures, `--max-videos 3000`), `output/comparison.csv` has 43 rows.
+- `comments.py --all` sampled ≤200 comments per channel → `audience_signals` in each summary. Reading the comparison: sort by affinity alone misleads when a channel has 1–3 Telugu videos in its last 30; filter on `telugu_videos_last_30` first.
+- Phase 3 transcript fetch must be run by the user (sandbox blocks youtube.com); Claude classification is on hold until the user adds `ANTHROPIC_API_KEY` (user chose to skip it for now, 2026-10-08).
 
 ## Phase 3 scripts (added 2026-10-08)
 - `transcripts.py` uses `youtube-transcript-api`. Connections to youtube.com are reset from Claude Code's command sandbox (googleapis.com works), and disabling the sandbox was denied, so the user runs it themselves: `.venv/bin/python src/transcripts.py --film Mirai`. Transient errors are not cached; `IpBlocked`/`RequestBlocked` stop the run.
