@@ -19,7 +19,8 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from dashboard_data import audited_channels, load_channel, slim_videos  # noqa: E402
+from dashboard_data import (audited_channels, discovery_info, load_channel, slim_for_site,  # noqa: E402
+                            slim_videos, tracked_films)
 from yt_channel_audit import (OUTPUT_DIR, ApiError, QuotaExceeded, YouTubeClient,  # noqa: E402
                               audit_channel, load_api_key, slugify)
 
@@ -58,6 +59,9 @@ class Handler(SimpleHTTPRequestHandler):
             self._json(401, {"error": "password required"})
         elif url.path == "/api/channels":
             self._json(200, audited_channels())
+        elif url.path == "/api/compare":
+            disc, films = discovery_info(), tracked_films()
+            self._json(200, [slim_for_site(load_channel(c["slug"], disc), films) for c in audited_channels()])
         elif url.path == "/api/audit":
             self._audit(parse_qs(url.query))
         else:
@@ -85,6 +89,7 @@ class Handler(SimpleHTTPRequestHandler):
         audience_file = OUTPUT_DIR / slug / f"{slug}_audience.json"
         audience = json.loads(audience_file.read_text(encoding="utf-8")) if audience_file.exists() else None
         self._json(200, {"summary": summary, "videos": slim_videos(videos), "audience": audience,
+                         "discovery": discovery_info().get(summary["profile"]["channel_id"]),
                          "quota_units_used": client.units_used})
 
 

@@ -123,6 +123,10 @@
   .verdict .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
   @media (max-width: 800px) { .verdict .cols { grid-template-columns: 1fr; } }
   .v-strong { border-left-color: var(--tag-obs); } .v-weak { border-left-color: var(--tag-inf); }
+  #compare table { font-size: 12.5px; } #compare tbody tr { cursor: pointer; } #compare tbody tr:hover td { background: var(--surface-2); }
+  #compare tr.current td { background: var(--tag-calc-bg); }
+  .fit { font-weight: 600; white-space: nowrap; } .fit-strong { color: var(--tag-obs); } .fit-weak { color: var(--tag-inf); }
+  .linkish { background: none; border: 0; color: var(--series-1); cursor: pointer; font: inherit; font-size: 12px; padding: 0; }
 </style>
 </head>
 <body>
@@ -161,6 +165,12 @@
       <div class="actions"><button id="go" type="submit">Get the answer</button><span class="status" id="status"></span></div>
     </div>
   </form>
+
+  <section class="card" id="compare" hidden style="margin-bottom:12px">
+    <h2>Compare audited creators against this question <span class="small" id="compare-note"></span></h2>
+    <div style="overflow:auto" id="compare-table"></div>
+    <p class="small" style="margin:8px 0 0">Click a row to open that creator below. Fit is the same rule-based score as the answer panel <span class="tag tag-inf">INFERRED</span>; typical views and engagement are <span class="tag tag-calc">CALCULATED</span> on the last 30 uploads; comment language is <span class="tag tag-inf">INFERRED</span> from a sample of up to 200 comments; "films" is how many of the tracked films the creator reviewed, from the discovery search.</p>
+  </section>
 
   <div id="app" hidden>
     <section class="card verdict" id="verdict" style="margin-bottom:12px"></section>
@@ -449,7 +459,7 @@
     });
   }
 
-  function answer(data, q) {
+  function assess(data, q) {
     const S = data.summary, P = S.profile, W = S.windows, l30 = W.last_30, life = W.lifetime;
     const V = data.videos.slice().sort((a, b) => (b.published || "").localeCompare(a.published || ""));
     const pros = [], cons = [], notes = []; let score = 0;
@@ -512,6 +522,11 @@
     const verdict = frac >= 0.7 ? ["Strong fit", "v-strong"] : frac >= 0.45 ? ["Moderate fit", ""] : ["Weak fit", "v-weak"];
     const goalText = q.goal === "film" ? `promoting ${q.films[0] ? `"${q.films[0]}"` : "a Telugu film"} to the ${audLabel(q.aud)} audience` : `reaching the ${audLabel(q.aud)} Telugu-cinema audience`;
 
+    return { score, maxScore, frac, verdict, goalText, pros, cons, notes };
+  }
+
+  function answer(data, q) {
+    const P = data.summary.profile, { verdict, goalText, pros, cons, notes } = assess(data, q);
     const el = $("verdict"); el.className = "card verdict " + verdict[1];
     el.innerHTML = `<h2>Answer to your question <span class="tag tag-inf">INFERRED · rule-based</span></h2>
       <p class="head">${verdict[0]} for ${esc(goalText)} — ${esc(P.title)}</p>
@@ -521,6 +536,25 @@
       <p class="small" style="margin:8px 0 0">What this cannot tell you: who the viewers are (age, gender, location) — that is private to the creator. If this creator stays on your list, ask for YouTube Studio audience screenshots. Telugu figures depend on keyword labels and are provisional. The verdict weighs reach, consistency, audience language (from sampled comments where available), Telugu share, Telugu affinity and the film check equally; it is a starting point, not a decision.</p>`;
     if (q.films[0]) { const fi = $("film"); fi.value = q.films[0]; fi.dispatchEvent(new Event("input")); }
   }
+  let compareAll = false;
+  function renderCompare(list, q, onPick, currentId) {
+    const rows = list.map((d, i) => ({ i, d, r: assess(d, q) }))
+      .sort((a, b) => b.r.frac - a.r.frac || (b.d.summary.windows.last_30.median_views || 0) - (a.d.summary.windows.last_30.median_views || 0));
+    const shown = compareAll ? rows : rows.slice(0, 15);
+    const cls = (v) => v[0] === "Strong fit" ? "fit fit-strong" : v[0] === "Weak fit" ? "fit fit-weak" : "fit";
+    $("compare-note").textContent = `${list.length} creators · ${q.goal === "film" ? `film: ${q.films.join(", ") || "none given"}` : "general Telugu reach"} · audience: ${audLabel(q.aud)}${q.min ? ` · min ${full(q.min)} views` : ""}`;
+    $("compare-table").innerHTML = `<table><thead><tr><th>#</th><th>Creator</th><th>Fit</th><th class="n">Subs</th><th class="n">Typical views</th><th class="n">Eng.</th><th class="n">Telugu vids /30</th><th class="n">Telugu cmts</th><th class="n">Hindi cmts</th><th class="n">Films</th><th class="n">Best tracked-film video</th></tr></thead><tbody>` +
+      shown.map((x, n) => { const P = x.d.summary.profile, w = x.d.summary.windows.last_30, A = x.d.audience, D = x.d.discovery;
+        return `<tr data-i="${x.i}" class="${P.channel_id === currentId ? "current" : ""}"><td>${n + 1}</td><td><strong>${esc(P.title)}</strong><br><span class="small">${esc(P.handle || "")}</span></td>
+          <td class="${cls(x.r.verdict)}">${x.r.verdict[0]}</td><td class="n">${compact(P.subscribers)}</td><td class="n">${compact(w.median_views)}</td><td class="n">${pct(w.engagement_per_view_pct, 2)}</td>
+          <td class="n">${w.language_mix.Telugu || 0}</td><td class="n">${A ? pct(A.telugu_comment_pct, 0) : "–"}</td><td class="n">${A ? pct(A.hindi_comment_pct, 0) : "–"}</td>
+          <td class="n">${D ? D.films_covered : "–"}</td><td class="n">${D && D.median_review_views ? compact(D.median_review_views) + " median" : "–"}</td></tr>`; }).join("") + `</tbody></table>` +
+      (rows.length > 15 ? `<p style="margin:8px 0 0"><button class="linkish" id="compare-more">${compareAll ? "Show top 15 only" : `Show all ${rows.length}`}</button></p>` : "");
+    $("compare-table").querySelectorAll("tbody tr").forEach((tr) => tr.onclick = () => onPick(Number(tr.dataset.i)));
+    const more = $("compare-more"); if (more) more.onclick = () => { compareAll = !compareAll; renderCompare(list, q, onPick, currentId); };
+    $("compare").hidden = false;
+  }
+
   const audLabel = (a) => a === "telugu" ? "Telugu-speaking" : a === "hindi" ? "Hindi-dubbed" : "pan-India";
   function guessLang(V) {
     const langs = ["Hindi", "Telugu", "Tamil", "English", "Malayalam", "Kannada"];
@@ -543,8 +577,11 @@
     $("q-known-wrap").querySelector("span").innerHTML = "Creator — this public page only has creators already audited. " + (window.LIVE_APP_URL ? `For any creator use the <a href="${window.LIVE_APP_URL}">live app</a>.` : "Use the live app for any creator.");
     const idx = Math.max(0, list.findIndex((d) => [d.summary.profile.channel_id, d.summary.profile.handle].includes(q0.channel)));
     known.value = idx;
-    form.onsubmit = (e) => { e.preventDefault(); const d = list[known.value], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id; show(d, q); window.scrollTo({ top: form.offsetTop + form.offsetHeight, behavior: "smooth" }); };
-    const d = list[idx], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id; show(d, q);
+    const pick = (i, scroll) => { known.value = i; const d = list[i], q = Q.read(); q.channel = d.summary.profile.handle || d.summary.profile.channel_id;
+      show(d, q); if (list.length > 1) renderCompare(list, q, (j) => pick(j, true), d.summary.profile.channel_id);
+      if (scroll) window.scrollTo({ top: $("app").offsetTop - 8, behavior: "smooth" }); };
+    form.onsubmit = (e) => { e.preventDefault(); pick(Number(known.value), true); };
+    pick(idx, false);
   } else {                                                                      // served by src/serve.py
     const api = async (path) => {                                             // retries once with a password on 401
       let key = ""; try { key = sessionStorage.getItem("dashKey") || ""; } catch (e) {}
@@ -560,14 +597,20 @@
       known.innerHTML = `<option value="">—</option>` + list.map((c) => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join("");
     }).catch((e) => { $("empty").textContent = e.message === "password required" || e.message === "wrong password" ? "Reload the page and enter the password to continue." : "Start the server with: .venv/bin/python src/serve.py"; });
     known.onchange = () => { if (known.value) chan.value = known.value; };
-    form.onsubmit = (e) => { e.preventDefault(); const q = Q.read(); if (!q.channel) { status.textContent = "Enter a channel first."; return; } load(q); };
+    let compareData = null;
+    async function compare(q, currentId) {
+      try { if (!compareData) compareData = await (await api("/api/compare")).json(); } catch (e) { return; }
+      if (compareData.length > 1) renderCompare(compareData, q, (i) => { const P = compareData[i].summary.profile; chan.value = P.handle || P.channel_id; load({ ...q, channel: chan.value }); }, currentId);
+    }
+    form.onsubmit = (e) => { e.preventDefault(); const q = Q.read(); if (!q.channel) { compare(q, null); status.textContent = "Showing the comparison; enter a channel to open one."; return; } load(q); };
     async function load(q) {
       go.disabled = true; status.textContent = "Fetching from YouTube… (a large channel takes a minute)";
       try {
         const r = await api("/api/audit?channel=" + encodeURIComponent(q.channel)), body = await r.json();
         if (!r.ok) throw new Error(body.error || r.statusText);
         show(body, q); status.textContent = `Done · quota used: ${body.quota_units_used} units`;
-        window.scrollTo({ top: form.offsetTop + form.offsetHeight, behavior: "smooth" });
+        compare(q, body.summary.profile.channel_id);
+        window.scrollTo({ top: $("app").offsetTop - 8, behavior: "smooth" });
       } catch (err) { status.textContent = "Error: " + err.message; }
       go.disabled = false;
     }

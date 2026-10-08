@@ -14,8 +14,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from dashboard_data import audited_channels, load_channel  # noqa: E402
-from yt_channel_audit import OUTPUT_DIR, ROOT  # noqa: E402
+from dashboard_data import audited_channels, discovery_info, load_channel, slim_for_site, tracked_films  # noqa: E402
+from yt_channel_audit import OUTPUT_DIR  # noqa: E402
 
 TEMPLATE = Path(__file__).resolve().parent / "dashboard_template.html"
 PLACEHOLDER = "/*__AUDIT_DATA__*/"
@@ -29,31 +29,13 @@ def embed(data):
             .replace("/*__LIVE_APP_URL__*/", LIVE_APP_URL))
 
 
-SITE_RECENT, SITE_TOP = 400, 100
-
-
-def slim_for_site(data):
-    """The all-channels page embeds dozens of channels; keep each one's recent + top videos only."""
-    videos = sorted(data["videos"], key=lambda v: v["published"] or "", reverse=True)
-    keep = {v["video_id"] for v in videos[:SITE_RECENT]}
-    keep |= {v["video_id"] for v in sorted(videos, key=lambda v: v["views"] or 0, reverse=True)[:SITE_TOP]}
-    films = [l.strip().lower() for l in (ROOT / "films.txt").read_text(encoding="utf-8").splitlines()
-             if l.strip() and not l.startswith("#")] if (ROOT / "films.txt").exists() else []
-    keep |= {v["video_id"] for v in videos if any(f in v["title"].lower() for f in films)}  # keep the films we track
-    slim = [v for v in videos if v["video_id"] in keep]
-    capped = len(slim) < len(videos)
-    return dict(data, videos=slim, videos_capped=capped,
-                videos_total=len(videos), site_note=(f"This shared page holds the {SITE_RECENT} most recent and {SITE_TOP} most-viewed "
-                                                      f"of {len(videos)} videos, plus any video naming a film in films.txt; the film check and top-10 cover those." if capped else ""))
-
-
 def main():
     slugs = sys.argv[1:] or [c["slug"] for c in audited_channels()]
     if not slugs:
         sys.exit("No audited channels yet. Run src/yt_channel_audit.py first.")
-    datasets = []
+    datasets, disc, films = [], discovery_info(), tracked_films()
     for slug in slugs:
-        data = load_channel(slug)
+        data = load_channel(slug, disc)
         datasets.append(data)
         out = OUTPUT_DIR / slug / f"{slug}_dashboard.html"
         out.write_text(embed(data), encoding="utf-8")
@@ -61,7 +43,7 @@ def main():
     if not sys.argv[1:]:
         site = OUTPUT_DIR.parent / "docs" / "index.html"
         site.parent.mkdir(exist_ok=True)
-        site.write_text(embed([slim_for_site(d) for d in datasets]), encoding="utf-8")
+        site.write_text(embed([slim_for_site(d, films) for d in datasets]), encoding="utf-8")
         print(f"wrote {site.relative_to(OUTPUT_DIR.parent)} ({len(datasets)} channels)")
 
 
