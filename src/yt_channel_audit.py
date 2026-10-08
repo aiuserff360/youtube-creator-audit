@@ -261,7 +261,8 @@ def fetch_channel(client, identifier):
     return items[0]
 
 
-def fetch_video_ids(client, channel_id, uploads_playlist):
+def fetch_video_ids(client, channel_id, uploads_playlist, max_videos=None):
+    """Newest first. Stops after max_videos ids when set (quota guard for huge channels)."""
     ids, token, page = [], None, 0
     while True:
         params = {"part": "contentDetails", "playlistId": uploads_playlist,
@@ -280,8 +281,8 @@ def fetch_video_ids(client, channel_id, uploads_playlist):
         ids += [it["contentDetails"]["videoId"] for it in data.get("items", [])]
         token = data.get("nextPageToken")
         page += 1
-        if not token:
-            return ids
+        if not token or (max_videos and len(ids) >= max_videos):
+            return ids[:max_videos] if max_videos else ids
 
 
 def fetch_videos(client, channel_id, video_ids):
@@ -521,7 +522,7 @@ def print_summary(profile, windows):
 
 # ── pipeline ─────────────────────────────────────────────────────────────────
 
-def audit_channel(client, identifier):
+def audit_channel(client, identifier, max_videos=None):
     """Run the full audit for one channel; returns (summary, videos) or None."""
     channel = fetch_channel(client, identifier)
     channel_id = channel["id"]
@@ -535,7 +536,7 @@ def audit_channel(client, identifier):
 
     profile = build_profile(channel)
     uploads = channel.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
-    video_ids = fetch_video_ids(client, channel_id, uploads) if uploads else []
+    video_ids = fetch_video_ids(client, channel_id, uploads, max_videos) if uploads else []
     if not video_ids:
         print(f"{profile['title']} ({channel_id}) was found but has no public "
               "uploads. Nothing to audit.")
@@ -549,13 +550,16 @@ def audit_channel(client, identifier):
                for name, size in WINDOWS}
 
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    truncated = bool(max_videos) and (profile["video_count"] or 0) > len(videos)
     summary = {
         "generated_at": generated_at,
         "profile": profile,
         "windows": windows,
         "field_tags": FIELD_TAGS,
         "calculated_from_inferred": DEPENDS_ON_INFERRED,
-        "caveats": CAVEATS,
+        "caveats": CAVEATS + ([f"Only the {len(videos)} most recent of {profile['video_count']} public videos "
+                               "were fetched (quota guard), so 'lifetime' here means those videos."] if truncated else []),
+        "videos_fetched": len(videos),
     }
 
     slug = slugify(profile["title"])
@@ -578,11 +582,13 @@ def main():
                         help="UC… channel ID or @handle (default: Mr Review Wala)")
     parser.add_argument("--refresh", action="store_true",
                         help="ignore cached API responses and re-fetch")
+    parser.add_argument("--max-videos", type=int, default=None,
+                        help="fetch only the N most recent videos (quota guard for huge channels)")
     args = parser.parse_args()
 
     client = YouTubeClient(load_api_key(), refresh=args.refresh)
     try:
-        audit_channel(client, args.channel)
+        audit_channel(client, args.channel, max_videos=args.max_videos)
     except QuotaExceeded:
         sys.exit(
             f"Daily YouTube quota exceeded after {client.units_used} calls this "
