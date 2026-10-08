@@ -10,6 +10,7 @@ repeating a channel costs no quota while the cache lasts.
 
 import json
 import os
+import re
 import sys
 import threading
 import webbrowser
@@ -25,10 +26,36 @@ from yt_channel_audit import (OUTPUT_DIR, ApiError, QuotaExceeded, YouTubeClient
                               audit_channel, load_api_key, slugify)
 
 TEMPLATE = Path(__file__).resolve().parent / "dashboard_template.html"
+SITE_PAGE = Path(__file__).resolve().parent.parent / "docs" / "index.html"
 HOSTED = "PORT" in os.environ          # a host like Render sets PORT
 PORT = int(os.environ.get("PORT", 8765))
 PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
 _lock = threading.Lock()  # one audit at a time
+
+
+def seed_channels():
+    """Channels embedded in docs/index.html: lets a fresh host (Render's disk is wiped on
+    restart) show every audited creator without re-spending quota."""
+    if not SITE_PAGE.exists():
+        return []
+    m = re.search(r'<script id="audit-data" type="application/json">(.*?)</script>', SITE_PAGE.read_text(encoding="utf-8"), re.S)
+    try:
+        data = json.loads(m.group(1).replace("<\\/", "</")) if m else []
+    except ValueError:
+        return []
+    return data if isinstance(data, list) else [data]
+
+
+SEED = seed_channels()
+
+
+def find_seed(identifier):
+    ident = identifier.lower().lstrip("@")
+    for d in SEED:
+        p = d["summary"]["profile"]
+        if ident in (p["channel_id"].lower(), (p.get("handle") or "").lower().lstrip("@")):
+            return d
+    return None
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -58,10 +85,16 @@ class Handler(SimpleHTTPRequestHandler):
         elif url.path.startswith("/api/") and PASSWORD and self.headers.get("X-Dashboard-Key") != PASSWORD:
             self._json(401, {"error": "password required"})
         elif url.path == "/api/channels":
-            self._json(200, audited_channels())
+            local = audited_channels()
+            ids = {c["id"] for c in local}
+            local += [{"slug": None, "id": d["summary"]["profile"]["channel_id"], "title": d["summary"]["profile"]["title"],
+                       "audited": d["summary"]["generated_at"]} for d in SEED if d["summary"]["profile"]["channel_id"] not in ids]
+            self._json(200, local)
         elif url.path == "/api/compare":
             disc, films = discovery_info(), tracked_films()
-            self._json(200, [slim_for_site(load_channel(c["slug"], disc), films) for c in audited_channels()])
+            local = [slim_for_site(load_channel(c["slug"], disc), films) for c in audited_channels()]
+            ids = {d["summary"]["profile"]["channel_id"] for d in local}
+            self._json(200, local + [d for d in SEED if d["summary"]["profile"]["channel_id"] not in ids])
         elif url.path == "/api/audit":
             self._audit(parse_qs(url.query))
         else:
@@ -72,6 +105,9 @@ class Handler(SimpleHTTPRequestHandler):
         refresh = (params.get("refresh") or ["0"])[0] == "1"
         if not identifier:
             return self._json(400, {"error": "channel is required"})
+        seed = None if refresh else find_seed(identifier)
+        if seed and not any(c["id"] == seed["summary"]["profile"]["channel_id"] for c in audited_channels()):
+            return self._json(200, dict(seed, quota_units_used=0, from_seed=True))  # already audited; no quota spent
         with _lock:
             client = YouTubeClient(API_KEY, refresh=refresh)
             try:

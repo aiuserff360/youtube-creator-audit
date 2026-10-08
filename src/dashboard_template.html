@@ -608,7 +608,7 @@
       try {
         const r = await api("/api/audit?channel=" + encodeURIComponent(q.channel)), body = await r.json();
         if (!r.ok) throw new Error(body.error || r.statusText);
-        show(body, q); status.textContent = `Done · quota used: ${body.quota_units_used} units`;
+        show(body, q); status.textContent = body.from_seed ? `Loaded from the published snapshot (${date(body.summary.generated_at)}), no quota used` : `Done · quota used: ${body.quota_units_used} units`;
         compare(q, body.summary.profile.channel_id);
         window.scrollTo({ top: $("app").offsetTop - 8, behavior: "smooth" });
       } catch (err) { status.textContent = "Error: " + err.message; }
