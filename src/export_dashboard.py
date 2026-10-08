@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dashboard_data import audited_channels, load_channel  # noqa: E402
-from yt_channel_audit import OUTPUT_DIR  # noqa: E402
+from yt_channel_audit import OUTPUT_DIR, ROOT  # noqa: E402
 
 TEMPLATE = Path(__file__).resolve().parent / "dashboard_template.html"
 PLACEHOLDER = "/*__AUDIT_DATA__*/"
@@ -37,11 +37,14 @@ def slim_for_site(data):
     videos = sorted(data["videos"], key=lambda v: v["published"] or "", reverse=True)
     keep = {v["video_id"] for v in videos[:SITE_RECENT]}
     keep |= {v["video_id"] for v in sorted(videos, key=lambda v: v["views"] or 0, reverse=True)[:SITE_TOP]}
+    films = [l.strip().lower() for l in (ROOT / "films.txt").read_text(encoding="utf-8").splitlines()
+             if l.strip() and not l.startswith("#")] if (ROOT / "films.txt").exists() else []
+    keep |= {v["video_id"] for v in videos if any(f in v["title"].lower() for f in films)}  # keep the films we track
     slim = [v for v in videos if v["video_id"] in keep]
     capped = len(slim) < len(videos)
     return dict(data, videos=slim, videos_capped=capped,
                 videos_total=len(videos), site_note=(f"This shared page holds the {SITE_RECENT} most recent and {SITE_TOP} most-viewed "
-                                                      f"of {len(videos)} videos; the film check and top-10 cover those." if capped else ""))
+                                                      f"of {len(videos)} videos, plus any video naming a film in films.txt; the film check and top-10 cover those." if capped else ""))
 
 
 def main():
