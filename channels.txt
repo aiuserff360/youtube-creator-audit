@@ -1,2 +1,44 @@
-UCflqFc2XQPyTiC4Fb7SfKgA
-UCeiAKuJGZrIjYvaq0nMwbJg
+# Shortlist from output/discovery/candidates.csv (2026-10-08): reviewed >=5 of the films in films.txt
+# with median review views >=30k. Netflix India and Aditya Music excluded (platform / label).
+UCflqFc2XQPyTiC4Fb7SfKgA  # Mr Review Wala (pilot)
+UC-qTldS8DNIGOfIVc0G8t-w  # Thyview (@thyview) films=20 median=357,672
+UCRvTQgaKQ4AKsxKf0rZUtuQ  # Movie Matters (@moviematters) films=17 median=185,785
+UCs55OZ6PkvIjwtyyqEFk8JQ  # Barbell Pitch Meetings (@barbellpitchmeetings) films=16 median=485,814
+UCo-NkhSDwu7uxim6CnJuNXw  # Mahidhar Vibes (@mahidharvibes) films=16 median=314,938
+UCBX4kRmQZwmiijn5gUFbTWA  # Ra One For You (@raoneforyou) films=16 median=70,624
+UCIihexFQucy1Sm7V7yvL_mA  # YOGI BOLTA HAI (@yogiboltahai) films=15 median=869,417
+UCgHmVF2DHE6JI90x0NwESuQ  # Poolachokka (@poolachokka) films=15 median=512,820
+UCyYhFnYuEHvB7C6hKyI6tSw  # Man Of Fiction (@manoffiction) films=15 median=62,009
+UC659Hf_uHG_-yMPd4I1F0sA  # SSP TV (@ssptv-news) films=14 median=301,068
+UC7ZEIf22kp0AEpvx3OLiX-g  # RatpacCheck / Telugu (@ratpaccheck) films=14 median=140,792
+UCeiAKuJGZrIjYvaq0nMwbJg  # Filmi Indian (@filmiindian) films=13 median=576,210
+UCo1oi6iPsxjo84aVkq7XjhA  # Ragadi (@ragadiproductions) films=13 median=368,472
+UCd5Os4gT74gxngzUYqGUzzg  # Suraj Kumar (@surajkumarreview) films=11 median=392,058
+UCpxFYOlrQbfhrNttv2M-qhg  # Cinemads (@cinemadstelugu) films=11 median=325,345
+UCIIIR-lkJcM6Pi2N7-TxbRA  # FEATU GADI MEDIA (@featugadimedia) films=11 median=92,665
+UCY_xWQNgM5HEPLKDhmmmHqQ  # Crazy 4 movie (@crazy4movie) films=11 median=78,505
+UC60YvD_EAsoU2lIcQdxwR1Q  # Unni Vlogs Cinephile (@unnivlogs) films=11 median=39,144
+UCkI-SYGC8fxPNcp6FsX4SRQ  # Tamil Talkies (@tamiltalkies) films=10 median=563,586
+UCUinnqDgIsNFleLdkZKbP-w  # BnfTV (@bnftv) films=10 median=551,861
+UCMADTa2I09LMVKJhGgvfAlQ  # Pratik's Film Theories (@pratiksfilmtheories) films=10 median=37,466
+UCgbzclo4Mfy_D68w_Bm_xHg  # Tried&Refused Productions. (@triedrefusedproductions) films=9 median=286,790
+UC1RIUWZZ2QCk-jRz3FGvhag  # Movies4u Official (@movies4uofficial) films=9 median=139,098
+UCoarMz-cpxAnBy8tszp35wA  # greatandhra (@greatandhranews) films=9 median=70,088
+UC0Qy5hPll0GOCzs89rt4mBQ  # TfiFacts (@unitedtfifacts) films=8 median=564,908
+UCWkHlUiYLeRSIMP8yM7rxxg  # PJ Explained (@pjexplained) films=8 median=330,664
+UCdEapoi2XRM5yGTOllfgNiA  # Review Talks (@reviewtalks) films=7 median=681,428
+UCr8xb2866oogDXDSN5-2Mxw  # Aswanth Kok (@aswanthkok10) films=7 median=457,122
+UCCIUgACAK5vTitLMc4Q1mYQ  # Gulte Pro (@gultepro) films=7 median=64,218
+UC6zUWUagxttjbxY5LUieATA  # Always Cinema (@always_cinema_live) films=6 median=6,617,650
+UC4jdvXkem9QuvPR_0NRa31w  # Uruttu Arafath Voice (@uruttuarafathvoice) films=6 median=716,769
+UCDF097Q4EK9rC63VY54UmDQ  # TeluguCinema Looks  (@telugumovielooks1242) films=6 median=424,256
+UCB11aWYWcRvO6zrNVnSZUdw  # FilmiFlare (@filmiflare7) films=6 median=199,380
+UC3Rey0d4AtvWyHVu0SC-VXA  # KaKi's Talkies (@kakistalkies) films=6 median=56,676
+UCTTUsQJAdGSd2mMsGGfvzhQ  # Galatta Plus (@galattaplus) films=6 median=41,502
+UCbBBs_0db5BTNeNDVJ9dHrw  # BrotherHud (@brotherhud28) films=5 median=1,988,281
+UC4wVDESOfHmByVCGQk5-l7g  # Learn with Heman (@learnwithheman) films=5 median=1,858,950
+UCPWqbr91cfbtLHZrHM5GItg  # ABHI KA REVIEW (@abhikareview) films=5 median=407,068
+UC3LsZV1-Gojn87s84sNy5Hw  # Telugu Filmy (@telugufilmyofficial) films=5 median=219,471
+UCPQ_0uYMGRJ2QZQonbNS2xg  # DSR TV (@dsrtvvideos) films=5 median=153,534
+UC-VmfNfCsekVz-89fxkn1Jw  # Vishwa Nomula (@vishwanomula) films=5 median=106,529
+UCPQwEOBvLR4mEzM_DHlQ0UA  # REELOAD MEDIA (@reeloadmedia) films=5 median=81,614

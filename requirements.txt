@@ -1,2 +1,4 @@
 requests
 python-dotenv
+youtube-transcript-api   # phase 3: captions, local only
+anthropic                # phase 3: review classification

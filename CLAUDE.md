@@ -106,6 +106,8 @@ Do not add "prepared by" or generator credits to any output.
 │   ├── keywords.py
 │   ├── run_all.py            # loops channels.txt, caches, builds comparison.csv
 │   ├── discover.py           # finds candidate creators via "<film> review" searches (search.list, 100 u each; ask first)
+│   ├── transcripts.py        # phase 3: captions via youtube-transcript-api → data/transcripts/ (run from the user's own terminal)
+│   ├── classify_reviews.py   # phase 3: Claude classifies transcripts (sentiment, verdict, promo) → output/reviews/
 │   ├── dashboard_template.html  # single-page dashboard; renders embedded JSON or talks to serve.py
 │   ├── dashboard_data.py     # load output/<slug>/ files, slim video rows for the page
 │   ├── serve.py              # local server on 127.0.0.1:8765: type a handle → dashboard (key stays in .env)
@@ -124,13 +126,18 @@ Do not add "prepared by" or generator credits to any output.
 ## Creator discovery (added 2026-10-08)
 `src/discover.py` is the one place `search.list` is allowed, and only after the user confirms (the script asks, and `--dry-run` shows the cost). It searches "<film> review" for each film in `films.txt` (two variants: order=viewCount, and relevanceLanguage=te), collects the channels behind the results, looks them up with `channels.list`, and writes `output/discovery/candidates.csv` ranked by films covered then median review views. Searches are cached in `data/raw/_search/`. Default budget guard: 4,500 units. Known gaps: Telugu-script titles (add Telugu-script queries later), reviews that don't name the film, YouTube's 500-result cap per query.
 
+## Phase 3 scripts (added 2026-10-08)
+- `transcripts.py` uses `youtube-transcript-api`. Connections to youtube.com are reset from Claude Code's command sandbox (googleapis.com works), and disabling the sandbox was denied, so the user runs it themselves: `.venv/bin/python src/transcripts.py --film Mirai`. Transient errors are not cached; `IpBlocked`/`RequestBlocked` stop the run.
+- `classify_reviews.py` calls `claude-opus-5-5` with a JSON schema (`output_config.format`), effort low, one call per transcript, cached in `data/reviews/`. Needs `ANTHROPIC_API_KEY` in `.env`. It prints a rough cost estimate and asks before spending. All outputs INFERRED; validate against ~30 hand-labelled videos before reporting.
+- `run_all.py` is the phase-2 batch runner (`--max-videos 3000` cap, `--budget`), writing `output/comparison.csv`.
+
 ## Dashboard (added 2026-10-05)
 The boss wanted a dashboard view. Rules that follow from the ground rules: never embed the API key in a web page, so live "type any channel" lookups only work through `serve.py` on this machine; shareable files are static exports with data embedded and only cover channels already audited. Publishing `output/site/` (e.g. GitHub Pages) sends data off this machine — ask first. Audience demographics stay a NOT AVAILABLE panel; never fabricate them even if a mock-up shows them.
 
 ## Phases
 1. **Phase 1 (now):** single channel end to end. Run it, show the summary, open the CSV, let the user sanity-check the language buckets.
-2. **Phase 2:** `run_all.py` over `channels.txt` with caching and `comparison.csv`.
-3. **Phase 3 (on request):** transcripts, LLM classification, comment sampling.
+2. **Phase 2 (done 2026-10-08):** `run_all.py` over `channels.txt` with caching and `comparison.csv`; `discover.py` to build `channels.txt` from film-review searches.
+3. **Phase 3 (started 2026-10-08, user asked):** transcripts + LLM classification built; comment sampling not yet.
 4. **Phase 4 (on request):** scheduled monthly refresh.
 
 ## How to behave on errors
