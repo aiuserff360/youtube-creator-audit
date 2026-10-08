@@ -28,7 +28,7 @@ def load_channel(slug):
                 v[k] = int(v[k]) if v[k] != "" else None
             v["is_short"] = v["is_short"] == "True"
             videos.append(v)
-    return {"summary": summary, "videos": videos}
+    return {"summary": summary, "videos": videos, "audience": summary.get("audience_signals")}
 
 
 def audited_channels():

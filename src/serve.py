@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dashboard_data import audited_channels, load_channel, slim_videos  # noqa: E402
-from yt_channel_audit import (ApiError, QuotaExceeded, YouTubeClient,  # noqa: E402
+from yt_channel_audit import (OUTPUT_DIR, ApiError, QuotaExceeded, YouTubeClient,  # noqa: E402
                               audit_channel, load_api_key, slugify)
 
 TEMPLATE = Path(__file__).resolve().parent / "dashboard_template.html"
@@ -81,7 +81,10 @@ class Handler(SimpleHTTPRequestHandler):
         if result is None:
             return self._json(400, {"error": "Channel found but it has no public uploads."})
         summary, videos = result
-        self._json(200, {"summary": summary, "videos": slim_videos(videos),
+        slug = slugify(summary["profile"]["title"])
+        audience_file = OUTPUT_DIR / slug / f"{slug}_audience.json"
+        audience = json.loads(audience_file.read_text(encoding="utf-8")) if audience_file.exists() else None
+        self._json(200, {"summary": summary, "videos": slim_videos(videos), "audience": audience,
                          "quota_units_used": client.units_used})
 
 

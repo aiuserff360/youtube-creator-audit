@@ -373,10 +373,22 @@
     $("recent").innerHTML = head + V.slice(0, 10).map(vrow).join("");
 
     // audience
-    $("audience").innerHTML = `The public API does not expose who watches. These are private to the creator's YouTube Studio:
+    const A = data.audience;
+    const naBlock = `<div class="na">Private to the creator's YouTube Studio, not in the public API:
       <ul><li>Age and gender</li><li>Countries and cities</li><li>Watch time, impressions, click-through rate</li><li>Traffic sources</li></ul>
-      <p style="margin:8px 0 0">To get them, ask the creator for YouTube Studio audience screenshots, or for viewer access to the channel's analytics.</p>
-      <p class="small" style="margin:6px 0 0">Not yet built: comment-language sampling as a rough proxy ${tag("INFERRED")}.</p>`;
+      <p style="margin:8px 0 0">To get them, ask the creator for YouTube Studio audience screenshots.</p></div>`;
+    if (A) {
+      const bars = (obj) => `<div class="hbars">${Object.entries(obj).map(([k, v]) => `<div class="row"><span class="ellipsis">${esc(k)}</span><div class="track"><div class="fill${k === "Telugu" ? " hl" : ""}" style="width:${v}%"></div></div><span class="n">${v}%</span></div>`).join("")}</div>`;
+      $("audience").innerHTML = `<p class="small" style="margin:0 0 6px">Language of ${A.comments_sampled} top comments on ${A.videos_sampled} recent videos ${tag("INFERRED")}</p>
+        ${bars(A.comment_language_pct)}
+        <table style="margin-top:8px"><tr><td>Movie-specific comments</td><td class="n">${A.movie_specific_pct}%</td></tr>
+        <tr><td>Repeat commenters (in 2+ videos)</td><td class="n">${A.repeat_commenters} of ${A.unique_commenters} (${A.repeat_commenter_pct}%)</td></tr></table>
+        <p class="small" style="margin:6px 0 0">Script of the comment is a rough proxy for the viewer's language; romanised Telugu/Hindi guessed from common words. Sampled ${esc(date(A.generated_at))}.</p>
+        <details style="margin-top:8px"><summary class="small">What is still not available</summary>${naBlock}</details>`;
+      $("audience").previousElementSibling.innerHTML = `Audience signals <span class="tag tag-inf">INFERRED</span>`;
+    } else {
+      $("audience").innerHTML = naBlock + `<p class="small" style="margin:6px 0 0">Comment sampling not run for this channel yet (src/comments.py).</p>`;
+    }
 
     // observations (rule-based)
     const obs = [];
