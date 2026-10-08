@@ -31,6 +31,7 @@ README.md
 requirements.txt             requests, python-dotenv (nothing else)
 render.yaml                  one-click Render deployment
 channels.txt                 channel IDs / handles to audit in batch (one per line)
+films.txt                    Telugu films that discover.py searches for
 src/
   yt_channel_audit.py        the pipeline: fetch → classify → metrics → CSV/JSON/scorecard
   keywords.py                keyword lists per industry bucket; extend these
@@ -38,6 +39,7 @@ src/
   dashboard_data.py          loads output/<slug>/ files for the dashboard
   serve.py                   HTTP server: GET /api/audit?channel=… runs the pipeline, serves the page
   export_dashboard.py        writes self-contained dashboard HTML files and docs/index.html
+  discover.py                finds candidate creators from "<film> review" searches (uses search.list; asks first)
 docs/index.html              generated; the static all-creators page
 data/raw/<channel_id>/       generated; cached raw API responses (git-ignored)
 output/<channel_slug>/       generated; CSV, summary JSON, scorecard, dashboard HTML (git-ignored)
@@ -78,6 +80,19 @@ so re-running a channel costs no quota until you pass `--refresh`.
 Quota: every call costs 1 unit; an audit costs about 1 + 2 × ceil(videos / 50)
 (a 2,500-video channel ≈ 101 units) against a free daily limit of 10,000.
 `search.list` (100 units per call) is deliberately never used.
+
+## Finding creators to audit
+
+```
+.venv/bin/python src/discover.py --dry-run   # plan and quota cost, spends nothing
+.venv/bin/python src/discover.py             # runs after a y/N confirmation
+```
+
+For every film in `films.txt` it fetches the most-viewed "<film> review" videos
+(`search.list`, 100 units per call, two calls per film), collects the channels
+behind them, looks up their size, and writes `output/discovery/candidates.csv`
+ranked by how many of the films each channel reviewed and the median views of
+those reviews. Pick channels from it into `channels.txt`.
 
 ## How the pipeline works
 

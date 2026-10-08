@@ -99,11 +99,13 @@ Do not add "prepared by" or generator credits to any output.
 ├── .env                 # YOUTUBE_API_KEY=...  (never committed)
 ├── .gitignore
 ├── channels.txt
+├── films.txt            # Telugu films that discover.py searches for
 ├── requirements.txt
 ├── src/
 │   ├── yt_channel_audit.py   # single-channel pipeline
 │   ├── keywords.py
 │   ├── run_all.py            # loops channels.txt, caches, builds comparison.csv
+│   ├── discover.py           # finds candidate creators via "<film> review" searches (search.list, 100 u each; ask first)
 │   ├── dashboard_template.html  # single-page dashboard; renders embedded JSON or talks to serve.py
 │   ├── dashboard_data.py     # load output/<slug>/ files, slim video rows for the page
 │   ├── serve.py              # local server on 127.0.0.1:8765: type a handle → dashboard (key stays in .env)
@@ -118,6 +120,9 @@ Do not add "prepared by" or generator credits to any output.
 - Live app (any creator, password-protected, key held as a Render secret): https://youtube-creator-audit.onrender.com — deployed from `render.yaml` on Render's free tier (sleeps after 15 min idle; cache is wiped on restart). Render auto-redeploys on every push to `main`.
 - To update the static page after auditing new channels: `LIVE_APP_URL=https://youtube-creator-audit.onrender.com python src/export_dashboard.py`, then commit `docs/index.html` and push. The page goes live about a minute after the push.
 - The page's question form takes `?channel=&lang=&goal=&films=&aud=&min=` so a filled-in question can be shared as a link.
+
+## Creator discovery (added 2026-10-08)
+`src/discover.py` is the one place `search.list` is allowed, and only after the user confirms (the script asks, and `--dry-run` shows the cost). It searches "<film> review" for each film in `films.txt` (two variants: order=viewCount, and relevanceLanguage=te), collects the channels behind the results, looks them up with `channels.list`, and writes `output/discovery/candidates.csv` ranked by films covered then median review views. Searches are cached in `data/raw/_search/`. Default budget guard: 4,500 units. Known gaps: Telugu-script titles (add Telugu-script queries later), reviews that don't name the film, YouTube's 500-result cap per query.
 
 ## Dashboard (added 2026-10-05)
 The boss wanted a dashboard view. Rules that follow from the ground rules: never embed the API key in a web page, so live "type any channel" lookups only work through `serve.py` on this machine; shareable files are static exports with data embedded and only cover channels already audited. Publishing `output/site/` (e.g. GitHub Pages) sends data off this machine — ask first. Audience demographics stay a NOT AVAILABLE panel; never fabricate them even if a mock-up shows them.

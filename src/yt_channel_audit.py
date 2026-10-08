@@ -115,12 +115,12 @@ class YouTubeClient:
         self.units_used = 0
         self.cache_hits = 0
 
-    def get(self, endpoint, params, cache_path):
+    def get(self, endpoint, params, cache_path, cost=1):
         if cache_path.exists() and not self.refresh:
             self.cache_hits += 1
             return json.loads(cache_path.read_text(encoding="utf-8"))
         resp = self.session.get(f"{API_BASE}/{endpoint}", params=params, timeout=30)
-        self.units_used += 1  # every endpoint we use costs 1 unit per call
+        self.units_used += cost  # 1 unit for list endpoints, 100 for search.list
         if resp.status_code != 200:
             raise self._error(resp, params)
         data = resp.json()

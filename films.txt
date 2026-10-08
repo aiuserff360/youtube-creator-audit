@@ -1,0 +1,22 @@
+# One Telugu film per line. discover.py searches "<film> review" for each.
+# Starter list of releases from the last ~2 years; edit freely.
+Mirai
+Kalki 2898 AD
+Pushpa 2
+Devara
+Salaar
+Game Changer
+HIT 3
+Thandel
+Sankranthiki Vasthunam
+Daaku Maharaaj
+Kuberaa
+Kingdom
+Hari Hara Veera Mallu
+Court State vs A Nobody
+Mad Square
+Thammudu
+Coolie Telugu
+The Paradise
+Raaka
+Romanchakam
